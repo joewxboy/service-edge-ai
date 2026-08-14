@@ -30,6 +30,11 @@ ENV_OVERRIDES = {
     "MONITOR_CONTEXT_ENABLED": ("context", "enabled", lambda v: str(v).lower() in ("1", "true", "yes")),
     "MONITOR_CONTEXT_MAX_BYTES": ("context", "max_total_bytes", int),
     "MONITOR_CONTEXT_MAX_FILE_BYTES": ("context", "max_file_bytes", int),
+    "MONITOR_EXPORT_ENABLED": ("export", "enabled", lambda v: str(v).lower() in ("1", "true", "yes")),
+    "MONITOR_EXPORT_SPOOL_DIR": ("export", "spool_directory", str),
+    "MONITOR_EXPORT_SPOOL_MAX_BYTES": ("export", "spool_max_bytes", int),
+    "MONITOR_EXPORT_NODE_ID": ("export", "node_id", str),
+    "MONITOR_EXPORT_INCLUDE_NODE": ("export", "include_node_identity", lambda v: str(v).lower() in ("1", "true", "yes")),
     "MONITOR_PROPOSAL_DIR": ("proposals", "directory", str),
     "MONITOR_LOG_LEVEL": ("logging", "level", str),
     "MONITOR_LOG_FORMAT": ("logging", "format", str),
@@ -88,6 +93,20 @@ class ContextConfig:
 
 
 @dataclass
+class ExportConfig:
+    """Optional northbound export. Inert when no sinks are configured."""
+
+    enabled: bool = True
+    spool_directory: str = "/var/lib/monitor/spool"
+    spool_max_bytes: int = 64 * 1024 * 1024
+    spool_max_age_seconds: float = 7 * 24 * 3600
+    include_node_identity: bool = True
+    node_id: str = ""
+    # {sink name: {type, level, ...sink-specific settings}}
+    sinks: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class ProposalsConfig:
     directory: str = "/var/lib/monitor/proposals"
 
@@ -116,6 +135,7 @@ class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     context: ContextConfig = field(default_factory=ContextConfig)
+    export: ExportConfig = field(default_factory=ExportConfig)
     proposals: ProposalsConfig = field(default_factory=ProposalsConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     health: HealthConfig = field(default_factory=HealthConfig)
@@ -227,6 +247,16 @@ class Config:
             errors.append("context.max_total_bytes must be greater than 0")
         if self.context.max_file_bytes <= 0:
             errors.append("context.max_file_bytes must be greater than 0")
+        if self.export.spool_max_bytes <= 0:
+            errors.append("export.spool_max_bytes must be greater than 0")
+        if self.export.spool_max_age_seconds <= 0:
+            errors.append("export.spool_max_age_seconds must be greater than 0")
+        if not isinstance(self.export.sinks, dict):
+            errors.append("export.sinks must be a mapping of sink name to settings")
+        else:
+            for name, settings in self.export.sinks.items():
+                if not isinstance(settings, dict) or not settings.get("type"):
+                    errors.append(f"export sink '{name}' must specify a type")
         if self.context.max_file_bytes > self.context.max_total_bytes:
             errors.append(
                 "context.max_file_bytes must not exceed context.max_total_bytes"

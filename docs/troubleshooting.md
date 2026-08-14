@@ -261,6 +261,47 @@ Or redirect with `MONITOR_PROPOSAL_DIR`.
 
 ---
 
+## Export is configured but nothing arrives
+
+```shell
+curl -sS http://127.0.0.1:8080/health | jq '{export_enabled, export_sinks, export_queue_depth, exports_delivered, exports_dropped}'
+```
+
+- **`export_enabled: false`** — no sink was configured, or every configured sink
+  failed validation. The startup log names each one it disabled and why.
+- **`export_queue_depth` growing, `exports_delivered` flat** — the sink is
+  unreachable. Records are queuing as designed and will flush on reconnection.
+  Check egress and proxy settings.
+- **A sink disabled at startup** — usually an unresolved credential:
+  ```
+  ERROR export sink oncall disabled: sink 'oncall' expects credential in $GITHUB_TOKEN, which is unset
+  ```
+- **`exports_dropped` climbing** — the spool hit its ceiling during a long
+  outage. Raise `MONITOR_EXPORT_SPOOL_MAX_BYTES` or accept the loss.
+
+Validate reachability without exporting anything:
+
+```shell
+edge-ai-monitor --check
+```
+
+## Exported records are missing analysis or log content
+
+This is the redaction and consent model working as intended. A sink set to
+`analysis` or `full` is clamped to `metadata` for any workload that has not set
+`MONITORING_EXPORT=true` in its deployment. See
+[northbound-export.md](northbound-export.md).
+
+## Issues are duplicated or too noisy
+
+- **Duplicate issues** — the local ledger under the spool directory holds the
+  problem-to-issue mapping. Deleting it makes the monitor forget existing issues
+  and open new ones.
+- **Too many comments** — raise `update_interval` on the sink.
+- **Too many issues** — raise `min_severity`; the default is `high`.
+- **Tickets closing too eagerly** — raise `resolve_after`; the default is 24
+  hours without recurrence.
+
 ## Health endpoint is unreachable
 
 ```

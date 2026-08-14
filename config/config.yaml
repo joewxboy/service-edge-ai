@@ -42,6 +42,40 @@ context:
   max_total_bytes: 8000                     # MONITOR_CONTEXT_MAX_BYTES (budget per prompt)
   max_file_bytes: 4000                      # MONITOR_CONTEXT_MAX_FILE_BYTES (per-file truncation)
 
+# Optional northbound export of errors and proposals to observability platforms
+# and issue trackers. Inert until at least one sink is configured.
+# See docs/northbound-export.md.
+export:
+  enabled: true                             # MONITOR_EXPORT_ENABLED
+  spool_directory: /var/lib/monitor/spool   # MONITOR_EXPORT_SPOOL_DIR
+  spool_max_bytes: 67108864                 # MONITOR_EXPORT_SPOOL_MAX_BYTES (64MB)
+  spool_max_age_seconds: 604800             # 7 days
+  include_node_identity: true               # MONITOR_EXPORT_INCLUDE_NODE
+  node_id: ""                               # MONITOR_EXPORT_NODE_ID (blank = ask the agent)
+
+  # No sinks configured means no export happens. Each sink sets its own
+  # redaction level: metadata (default) | analysis | full.
+  #
+  # IMPORTANT: analysis and full carry content derived from workload logs, and
+  # only apply to workloads that set MONITORING_EXPORT=true in their deployment.
+  sinks: {}
+  #   fleet-dashboard:
+  #     type: otlp
+  #     endpoint: https://collector.example.com
+  #     level: metadata
+  #   ops-alerts:
+  #     type: webhook
+  #     url: https://hooks.example.com/edge
+  #     token_env: MONITOR_EXPORT_WEBHOOK_TOKEN
+  #     level: analysis
+  #   oncall-tickets:
+  #     type: github
+  #     repository: myorg/edge-incidents
+  #     token_env: GITHUB_TOKEN
+  #     min_severity: high
+  #     resolve_after: 86400
+  #     dry_run: true
+
 # Where remediation proposals are written.
 proposals:
   directory: /var/lib/monitor/proposals   # MONITOR_PROPOSAL_DIR

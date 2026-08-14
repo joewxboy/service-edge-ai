@@ -17,6 +17,7 @@ Supporting reference:
 | Document | Contents |
 |---|---|
 | [context-and-steering.md](context-and-steering.md) | **Steering the model with SKILL.md files, runbooks, and wiki content** |
+| [northbound-export.md](northbound-export.md) | `MONITORING_EXPORT` and what leaves the node |
 | [monitoring-variables.md](../horizon/monitoring-variables.md) | Every `MONITORING_*` variable and its parsing rules |
 | [monitoring-configuration.md](monitoring-configuration.md) | Log mounts and error patterns in depth |
 | [examples/](examples/) | Four copy-and-adapt service definitions |
@@ -35,6 +36,7 @@ Supporting reference:
 | Document | Contents |
 |---|---|
 | [operations.md](operations.md) | **Daily operations: find errors, remediate, roll back, tune context, tune performance** |
+| [northbound-export.md](northbound-export.md) | Forwarding errors and proposals to observability platforms and issue trackers |
 | [deployment.md](deployment.md) | Build, publish, register, verify |
 | [tuning.md](tuning.md) | **Model selection, timeouts, throughput, and every config variable** |
 | [context-and-steering.md](context-and-steering.md) | Node-wide knowledge injection |

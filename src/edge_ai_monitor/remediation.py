@@ -9,7 +9,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from .error_analyzer import AnalysisResult
 
@@ -106,8 +106,15 @@ def requires_human_review(severity: str, confidence: float) -> bool:
 class RemediationGenerator:
     """Turns analysis results into proposals and writes them to disk."""
 
-    def __init__(self, proposal_dir: str = DEFAULT_PROPOSAL_DIR):
+    def __init__(
+        self,
+        proposal_dir: str = DEFAULT_PROPOSAL_DIR,
+        on_proposal: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ):
         self.proposal_dir = Path(proposal_dir)
+        # Called with the persisted proposal; used by export. Never allowed to
+        # affect proposal generation or storage.
+        self.on_proposal = on_proposal
         self._lock = threading.RLock()
         self.written_count = 0
         self.updated_count = 0
@@ -230,6 +237,9 @@ class RemediationGenerator:
         )
         previous_analyses = int(old.get("analysis_count") or 0)
         metadata["analysis_count"] = previous_analyses + (0 if from_cache else 1)
+        # Export state belongs to the problem, not to this occurrence.
+        if old.get("exports"):
+            metadata["exports"] = old["exports"]
         return proposal
 
     def persist(self, proposal: Proposal, from_cache: bool = False) -> Optional[Path]:
@@ -283,4 +293,47 @@ class RemediationGenerator:
         """Generate and persist a proposal for one analysis result."""
         proposal = self.generate(result)
         self.persist(proposal, from_cache=getattr(result, "from_cache", False))
+
+        if self.on_proposal is not None:
+            # Export must never affect local proposal storage, so anything it
+            # raises stops here.
+            try:
+                self.on_proposal(proposal.to_dict())
+            except Exception:
+                logger.exception("proposal subscriber failed; local storage unaffected")
         return proposal
+
+    def record_delivery(
+        self, problem_key: str, sink: str, status: str, reference: str = ""
+    ) -> None:
+        """Note where a proposal was sent, so a local reader can follow it."""
+        with self._lock:
+            path = self._path_for_problem(problem_key)
+            if path is None:
+                return
+            try:
+                document = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return
+
+            exports = document.setdefault("metadata", {}).setdefault("exports", {})
+            entry = {"status": status, "at": _utcnow()}
+            if reference:
+                entry["reference"] = reference
+            exports[sink] = entry
+
+            try:
+                tmp = path.with_suffix(".json.tmp")
+                tmp.write_text(json.dumps(document, indent=2, sort_keys=True), encoding="utf-8")
+                os.replace(tmp, path)
+            except OSError as exc:
+                logger.warning("could not record delivery state for %s: %s", problem_key, exc)
+
+    def _path_for_problem(self, problem_key: str) -> Optional[Path]:
+        """Locate a proposal file by problem key across workload directories."""
+        if not self.proposal_dir.is_dir():
+            return None
+        safe = _safe_dirname(problem_key)
+        for candidate in self.proposal_dir.glob(f"*/{safe}.json"):
+            return candidate
+        return None

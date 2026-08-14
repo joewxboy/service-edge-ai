@@ -230,16 +230,43 @@ demand is known. Sinks are small and self-contained enough to add later.
 **Rollback:** unset the sink configuration and restart. The spool can be deleted;
 nothing reads it back. Local proposals are unaffected.
 
-## Open Questions
+## Resolved Questions
 
-1. **Resolve window.** How long without recurrence before an issue is closed?
-   Too short reopens tickets on flapping problems; too long leaves stale ones.
-2. **Fleet identity.** Proposals identify a workload but not a node. Should
-   exports carry a node identifier by default, given it is arguably sensitive?
-3. **Backfill on first connection.** When a node has been offline since before
-   export was configured, should existing local proposals be exported, or only
-   new ones?
-4. **Per-workload export opt-out.** Should a workload be able to consent to local
-   monitoring but refuse export, via a `MONITORING_EXPORT=false` variable?
-5. **Severity threshold defaults.** Which severities warrant an issue rather than
-   just an event? `critical` and `high` is the obvious starting point.
+**1. Resolve window: 24 hours by default.**
+Shorter windows reopen tickets on problems with a daily rhythm — a workload that
+only errors during business hours would churn its issue every night. Twenty-four
+hours covers a full daily cycle, so a problem that stays quiet across one has
+plausibly stopped. Configurable for estates with slower cycles.
+
+**2. Exports carry node identity by default.**
+Fleet visibility is the entire point; a proposal that says "service X failed"
+without saying where is not actionable. The node id and organisation are already
+present in the exchange and in agreements, so this is not new exposure in the way
+log content is. Operators who consider node names sensitive can suppress or
+alias them.
+
+**3. No backfill when export is first enabled.**
+Backfilling would dump the accumulated history into a tracker on day one, which
+is a poor first impression and mostly noise. It is also unnecessary: a problem
+that is still happening will recur, and recurrence exports it. Anything that
+never recurs was not worth a ticket. A one-shot backfill command can be added
+later if a real need appears.
+
+**4. Workloads may refuse export, and consent is graduated by level.**
+`MONITORING_EXPORT` in the workload's deployment controls this. The default
+permits `metadata`-level export only — service identity, severity, counts,
+timestamps — which states an operational fact the node operator already knows
+and contains no log-derived content. The `analysis` and `full` levels do carry
+content derived from the workload's logs, so they require the workload to opt in
+explicitly with `MONITORING_EXPORT=true`.
+
+This keeps the consent model coherent: agreeing to local monitoring is not the
+same as agreeing to have your log content sent to a third party, but it is also
+not a reason to make fleet-level error counting impossible.
+
+**5. Issue creation threshold: `high` and above.**
+`critical` and `high` become work items; `medium` and `low` are exported as
+events only. This matches how the human-review flag already partitions
+proposals, so an operator sees tickets for the same things the system already
+says need a human. Configurable, including `all` for teams that want everything
+tracked.

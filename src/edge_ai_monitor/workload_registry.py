@@ -33,6 +33,7 @@ ENABLED_VAR = "MONITORING_ENABLED"
 LOG_PATHS_VAR = "MONITORING_LOG_PATHS"
 ERROR_PATTERNS_VAR = "MONITORING_ERROR_PATTERNS"
 CONTEXT_PATHS_VAR = "MONITORING_CONTEXT_PATHS"
+EXPORT_VAR = "MONITORING_EXPORT"
 
 TRUE_VALUES = ("true", "1", "yes")
 
@@ -82,6 +83,9 @@ class MonitoringConfig:
     # Files of domain knowledge (SKILL.md, runbooks) injected into this
     # workload's analysis prompts.
     context_paths: List[str] = field(default_factory=list)
+    # Consent to export log-derived content off the node. Metadata-level export
+    # is permitted regardless; analysis and full levels require this.
+    export_content: bool = False
 
     @classmethod
     def from_env(cls, env: Dict[str, str]) -> "MonitoringConfig":
@@ -111,6 +115,7 @@ class MonitoringConfig:
             # An unset or empty pattern list falls back to the defaults.
             error_patterns=patterns or list(DEFAULT_ERROR_PATTERNS),
             context_paths=context_paths,
+            export_content=str(env.get(EXPORT_VAR, "")).strip().lower() in TRUE_VALUES,
         )
 
     @classmethod
@@ -175,6 +180,9 @@ class MonitoringConfig:
             log_paths=log_paths,
             error_patterns=patterns or list(DEFAULT_ERROR_PATTERNS),
             context_paths=context_paths,
+            export_content=any(
+                str(env.get(EXPORT_VAR, "")).strip().lower() in TRUE_VALUES for env in envs
+            ),
         )
 
 
@@ -198,6 +206,11 @@ class Workload:
     def context_paths(self) -> List[str]:
         """Domain-knowledge files declared by this workload."""
         return list(self.monitoring.context_paths)
+
+    @property
+    def permits_content_export(self) -> bool:
+        """Whether this workload consented to content leaving the node."""
+        return self.monitoring.export_content
 
     @property
     def is_monitorable(self) -> bool:

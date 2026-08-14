@@ -158,3 +158,46 @@ def test_to_dict_round_trips_through_from_dict():
     restored = Config.from_dict(original.to_dict())
     assert restored.llm.model == "tinyllama"
     assert restored.to_dict() == original.to_dict()
+
+
+# ---------------- export ----------------
+
+
+def test_export_defaults_are_inert():
+    config = Config()
+    assert config.export.sinks == {}
+    assert config.export.include_node_identity is True
+    config.validate()
+
+
+def test_export_sink_requires_a_type(tmp_path):
+    path = write_config(tmp_path, {"export": {"sinks": {"bad": {"url": "https://x"}}}})
+    with pytest.raises(ConfigError):
+        Config.load(path, env={})
+
+
+def test_export_sink_with_type_is_accepted(tmp_path):
+    path = write_config(
+        tmp_path,
+        {"export": {"sinks": {"hook": {"type": "webhook", "url": "https://x", "level": "analysis"}}}},
+    )
+    config = Config.load(path, env={})
+    assert config.export.sinks["hook"]["type"] == "webhook"
+
+
+@pytest.mark.parametrize("env", [
+    {"MONITOR_EXPORT_SPOOL_MAX_BYTES": "0"},
+    {"MONITOR_EXPORT_SPOOL_MAX_BYTES": "-1"},
+])
+def test_invalid_spool_size_rejected(env):
+    with pytest.raises(ConfigError):
+        Config.load("/nonexistent", env=env)
+
+
+def test_export_env_overrides():
+    config = Config.load(
+        "/nonexistent",
+        env={"MONITOR_EXPORT_ENABLED": "false", "MONITOR_EXPORT_NODE_ID": "edge-7"},
+    )
+    assert config.export.enabled is False
+    assert config.export.node_id == "edge-7"

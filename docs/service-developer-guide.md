@@ -191,6 +191,7 @@ Add the `MONITORING_*` environment variables **inside the deployment section**:
 | `MONITORING_LOG_PATHS` | yes when enabled | — | Files to tail, **as the monitor sees them**. |
 | `MONITORING_ERROR_PATTERNS` | no | `ERROR,FATAL,Exception,CRITICAL` | Case-insensitive patterns marking a line as an error. |
 | `MONITORING_CONTEXT_PATHS` | no | — | Docs to steer the model (SKILL.md, runbooks) |
+| `MONITORING_EXPORT` | no | `false` | Consent to your log-derived content leaving the node if the operator has configured [export](northbound-export.md). Without it, only counts and identity are exported. |
 
 **`MONITORING_CONTEXT_PATHS` is the highest-leverage thing you can add.** Given
 a runbook, the model names your actual components and returns your actual

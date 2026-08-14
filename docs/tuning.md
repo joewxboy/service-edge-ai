@@ -231,6 +231,19 @@ monitor many high-volume files and see buffer warnings.
 
 See [context-and-steering.md](context-and-steering.md).
 
+### Northbound export
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MONITOR_EXPORT_ENABLED` | `true` | Master switch; inert without sinks |
+| `MONITOR_EXPORT_SPOOL_DIR` | `/var/lib/monitor/spool` | Store-and-forward queue |
+| `MONITOR_EXPORT_SPOOL_MAX_BYTES` | `67108864` | Spool ceiling (64MB) |
+| `MONITOR_EXPORT_NODE_ID` | *(asks the agent)* | Node identity on exported records |
+| `MONITOR_EXPORT_INCLUDE_NODE` | `true` | Attach node identity at all |
+
+Sinks themselves are configured under `export.sinks` in `config.yaml`. See
+[northbound-export.md](northbound-export.md).
+
 ### Discovery and logs
 
 | Variable | Default | Meaning |

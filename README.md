@@ -163,6 +163,9 @@ tuning guidance: [docs/tuning.md](docs/tuning.md).**
 | `MONITOR_CONTEXT_DIR` | `/etc/edge-ai-monitor/context` | Node-wide knowledge injected into prompts |
 | `MONITOR_CONTEXT_ENABLED` | `true` | Master switch for knowledge injection |
 | `MONITOR_CONTEXT_MAX_BYTES` | `8000` | Guidance budget per prompt |
+| `MONITOR_EXPORT_ENABLED` | `true` | Master switch for northbound export (inert without sinks) |
+| `MONITOR_EXPORT_SPOOL_DIR` | `/var/lib/monitor/spool` | Store-and-forward queue |
+| `MONITOR_EXPORT_NODE_ID` | *(from the agent)* | Node identity attached to exports |
 | `MONITOR_PROPOSAL_DIR` | `/var/lib/monitor/proposals` | Proposal output |
 | `MONITOR_LOG_LEVEL` | `INFO` | Logging verbosity |
 | `MONITOR_HEALTH_PORT` | `8080` | Health endpoint port |
@@ -203,7 +206,9 @@ the loops recover on their own.
 ## Privacy and resource guarantees
 
 - **Opt-in only.** No `MONITORING_ENABLED=true` means no log access, ever.
-- **Local inference.** Log content never leaves the node.
+- **Local inference.** Log content never leaves the node — unless you explicitly
+  configure [northbound export](docs/northbound-export.md) above the default
+  redaction level, which additionally requires each workload to opt in.
 - **Read-only.** Logs are mounted read-only; the anax API is only ever queried.
 - **No persistence beyond proposals.** Log content is buffered in memory and
   discarded.
@@ -237,6 +242,7 @@ out, and the constraints that shape it. Otherwise
 | [monitoring-variables.md](horizon/monitoring-variables.md) | Full `MONITORING_*` variable reference |
 | [monitoring-configuration.md](docs/monitoring-configuration.md) | Log mounts and error patterns in depth |
 | [operations.md](docs/operations.md) | For operators: finding errors, remediating, rolling back, performance |
+| [northbound-export.md](docs/northbound-export.md) | Optional export to observability platforms and issue trackers |
 | [deployment.md](docs/deployment.md) | For node operators: build, publish, register, verify |
 | [architecture.md](docs/architecture.md) | Components, data flow, threading, failure behaviour |
 | [llm-models.md](docs/llm-models.md) | Model selection, measured timings, updates, air-gapped nodes |

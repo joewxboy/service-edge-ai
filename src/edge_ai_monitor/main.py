@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from .anax_client import AnaxClient
 from .config import Config, ConfigError
 from .context import ContextLibrary
+from .export import build_exporter
 from .error_analyzer import AnalysisResult, ErrorAnalyzer
 from .health import HealthServer
 from .log_monitor import ErrorEvent, LogMonitor
@@ -49,7 +50,20 @@ class MonitorService:
             poll_interval=config.discovery.poll_interval,
             on_change=self._on_workload_change,
         )
-        self.generator = RemediationGenerator(proposal_dir=config.proposals.directory)
+        self.generator = RemediationGenerator(
+            proposal_dir=config.proposals.directory,
+            on_proposal=self._on_proposal_persisted,
+        )
+        self.exporter = (
+            build_exporter(
+                config.export,
+                node=self._node_identity(),
+                consent_provider=self._workload_permits_content_export,
+                on_delivery=self.generator.record_delivery,
+            )
+            if config.export.enabled
+            else None
+        )
         self.context_library = ContextLibrary(
             context_dir=config.context.directory,
             max_total_bytes=config.context.max_total_bytes,
@@ -79,6 +93,33 @@ class MonitorService:
     def _workload_metadata(self, workload_id: str) -> Dict[str, Any]:
         workload = self.registry.get(workload_id)
         return workload.metadata() if workload else {"workload_id": workload_id}
+
+    def _node_identity(self) -> Dict[str, str]:
+        """Identity attached to exports, so fleet views can attribute problems."""
+        if not self.config.export.include_node_identity:
+            return {}
+        return {"id": self.config.export.node_id or self._detect_node_id()}
+
+    def _detect_node_id(self) -> str:
+        """Best-effort node id from the agent, falling back to the hostname."""
+        try:
+            node = self.anax_client.get_node_status()
+            identity = str(node.get("id") or "")
+            org = str(node.get("organization") or "")
+            return f"{org}/{identity}" if org and identity else identity
+        except Exception:
+            import socket
+
+            return socket.gethostname()
+
+    def _workload_permits_content_export(self, workload_id: str) -> bool:
+        workload = self.registry.get(workload_id)
+        return bool(workload and workload.permits_content_export)
+
+    def _on_proposal_persisted(self, proposal: Dict[str, Any]) -> None:
+        """Hand a persisted proposal to export, if configured."""
+        if self.exporter is not None:
+            self.exporter.submit(proposal)
 
     def _workload_knowledge(self, workload_id: str) -> str:
         """Domain guidance for a workload: its own context files plus node-wide."""
@@ -151,6 +192,7 @@ class MonitorService:
                 if self.config.context.enabled
                 else {"context_enabled": False}
             ),
+            **(self.exporter.describe() if self.exporter is not None else {"export_enabled": False}),
         }
 
     # ---------------- lifecycle ----------------
@@ -169,6 +211,8 @@ class MonitorService:
         self.analyzer.start()
         self.log_monitor.start()
         self.registry.start()
+        if self.exporter is not None and self.exporter.enabled:
+            self.exporter.start()
         if self.health_server is not None:
             self.health_server.start()
 
@@ -196,6 +240,8 @@ class MonitorService:
 
         if self.health_server is not None:
             self.health_server.stop()
+        if self.exporter is not None:
+            self.exporter.stop()
         self.registry.stop()
         self.log_monitor.stop()
         # Stopped last so queued analyses can drain into proposals.
@@ -246,6 +292,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.check:
         ok = service.validate_startup()
+        if service.exporter is not None and service.exporter.enabled:
+            for sink, reachable in service.exporter.check().items():
+                print(f"{'OK' if reachable else 'FAIL'}: export sink {sink}")
+                ok = ok and reachable
         for message in service.startup_errors:
             print(f"FAIL: {message}", file=sys.stderr)
         if ok:

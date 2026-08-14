@@ -338,3 +338,39 @@ def test_workload_metadata_includes_service_identity(service_configs, agreements
     assert metadata["organization"] == "examples"
     assert metadata["version"] == "1.2.0"
     assert metadata["state"] == "running"
+
+
+# ---------------- export consent ----------------
+
+
+def test_export_consent_defaults_to_false():
+    config = MonitoringConfig.from_env(
+        {"MONITORING_ENABLED": "true", "MONITORING_LOG_PATHS": "/a.log"}
+    )
+    assert config.export_content is False
+
+
+def test_export_consent_when_explicitly_granted():
+    config = MonitoringConfig.from_env(
+        {"MONITORING_ENABLED": "true", "MONITORING_LOG_PATHS": "/a.log",
+         "MONITORING_EXPORT": "true"}
+    )
+    assert config.export_content is True
+
+
+def test_export_consent_read_from_deployment():
+    config = MonitoringConfig.from_deployment(
+        deployment_with([
+            "MONITORING_ENABLED=true",
+            "MONITORING_LOG_PATHS=/a.log",
+            "MONITORING_EXPORT=yes",
+        ])
+    )
+    assert config.export_content is True
+
+
+def test_workload_exposes_export_consent(service_configs, agreements, service_definitions):
+    registry = make_registry(service_configs, agreements, service_definitions)
+    registry.poll_once()
+    # The fixture workloads do not opt into export.
+    assert registry.get(SENSOR).permits_content_export is False
