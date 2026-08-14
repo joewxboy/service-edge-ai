@@ -1,0 +1,108 @@
+# Remediation proposals
+
+## Purpose
+
+Turn a completed analysis into an actionable, reviewable proposal and persist it
+for an operator to read.
+
+Proposals are advisory: the system never executes remediation. Each proposal
+describes one ongoing problem rather than one occurrence, so a recurring error
+updates a single record instead of accumulating duplicates.
+
+## Requirements
+
+### Requirement: Remediation proposal generation
+The system SHALL generate actionable remediation proposals based on error analysis results using the LLM.
+
+#### Scenario: Successful proposal generation
+- **WHEN** error analysis completes with high confidence
+- **THEN** system generates a remediation proposal with specific steps to resolve the error
+
+#### Scenario: Analysis with low confidence
+- **WHEN** error analysis completes with confidence < 0.5
+- **THEN** system generates a proposal marked as "requires human review" with diagnostic steps
+
+### Requirement: Structured proposal format
+The system SHALL output remediation proposals as structured JSON containing error summary, root cause, severity, remediation steps, and confidence score.
+
+#### Scenario: Complete proposal
+- **WHEN** proposal is generated
+- **THEN** output includes all required fields: error_summary, root_cause, severity, remediation_steps (array), confidence
+
+#### Scenario: Missing context
+- **WHEN** insufficient context is available for detailed remediation
+- **THEN** proposal includes diagnostic steps to gather more information
+
+### Requirement: Step-by-step remediation
+The system SHALL provide remediation steps as an ordered list of specific actions to take.
+
+#### Scenario: Multi-step remediation
+- **WHEN** error requires multiple actions to resolve
+- **THEN** proposal lists steps in logical execution order with clear descriptions
+
+#### Scenario: Single-step remediation
+- **WHEN** error has a simple fix
+- **THEN** proposal provides single clear action step
+
+### Requirement: Workload-specific recommendations
+The system SHALL tailor remediation proposals to the specific workload context including service type, configuration, and deployment environment.
+
+#### Scenario: Configuration error
+- **WHEN** error is caused by misconfiguration
+- **THEN** proposal references specific configuration files and correct values
+
+#### Scenario: Dependency error
+- **WHEN** error is caused by missing or incompatible dependency
+- **THEN** proposal identifies the dependency and provides installation/update steps
+
+### Requirement: Proposal persistence
+The system SHALL persist remediation proposals to local storage for review and tracking.
+
+#### Scenario: Proposal saved
+- **WHEN** a proposal is generated for a problem not seen before
+- **THEN** system writes it to /var/lib/monitor/proposals/<workload>/<problem-key>.json
+
+#### Scenario: Recurring problem
+- **WHEN** a proposal is generated for a problem that already has a file
+- **THEN** system updates that file in place rather than creating a new one, accumulating total_occurrences and advancing last_seen while preserving first_seen
+
+#### Scenario: Re-analysis of a known problem
+- **WHEN** a problem is analysed again after its cached analysis expired
+- **THEN** system replaces the analysis content with the newer explanation and increments analysis_count
+
+#### Scenario: Occurrence served from cache
+- **WHEN** an occurrence reuses a cached analysis rather than running inference
+- **THEN** system updates occurrence tracking without incrementing analysis_count
+
+#### Scenario: Storage failure
+- **WHEN** proposal cannot be written to disk
+- **THEN** system logs the proposal to stdout and continues operation
+
+### Requirement: Proposal metadata
+The system SHALL include metadata in each proposal: timestamp, workload identifier, error location, and analysis duration.
+
+#### Scenario: Complete metadata
+- **WHEN** proposal is generated
+- **THEN** metadata includes ISO 8601 timestamp, service name/version, log file path, line number, and analysis duration in milliseconds
+
+#### Scenario: Problem lifetime
+- **WHEN** a proposal describes a problem that has recurred
+- **THEN** metadata includes first_seen, last_seen, total_occurrences, and analysis_count so an operator can judge duration and blast radius
+
+### Requirement: Human review indicators
+The system SHALL mark proposals requiring human review based on confidence score and error severity.
+
+#### Scenario: High-risk proposal
+- **WHEN** severity is "critical" or confidence < 0.6
+- **THEN** proposal includes "requires_human_review": true flag
+
+#### Scenario: Routine proposal
+- **WHEN** severity is "low" or "medium" and confidence >= 0.8
+- **THEN** proposal includes "requires_human_review": false flag
+
+### Requirement: Disclaimer inclusion
+The system SHALL include a disclaimer in all proposals stating that LLM-generated recommendations should be validated before execution.
+
+#### Scenario: Proposal with disclaimer
+- **WHEN** any proposal is generated
+- **THEN** output includes disclaimer field: "This remediation proposal is generated by an AI system. Validate all steps before execution in production environments."
