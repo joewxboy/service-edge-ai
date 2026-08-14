@@ -355,12 +355,13 @@ docker run --rm -v edge-ai-monitor-state:/state busybox \
   find /state/proposals -name '*.json'
 
 docker run --rm -v edge-ai-monitor-state:/state busybox \
-  cat /state/proposals/<workload>/<timestamp>.json
+  cat /state/proposals/<workload>/<problem-key>.json
 ```
 
 Proposals are written to
-`/var/lib/monitor/proposals/<workload>/<timestamp>.json`, one file per analysis,
-inside the `edge-ai-monitor-state` volume.
+`/var/lib/monitor/proposals/<workload>/<problem-key>.json` — **one file per
+distinct problem**, not per occurrence. A recurring error updates the same file,
+accumulating `total_occurrences` and advancing `last_seen`.
 
 ---
 

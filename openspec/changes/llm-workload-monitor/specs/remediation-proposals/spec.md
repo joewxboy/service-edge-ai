@@ -48,8 +48,20 @@ The system SHALL tailor remediation proposals to the specific workload context i
 The system SHALL persist remediation proposals to local storage for review and tracking.
 
 #### Scenario: Proposal saved
-- **WHEN** proposal is generated
-- **THEN** system writes proposal to /var/lib/monitor/proposals/<workload>/<timestamp>.json
+- **WHEN** a proposal is generated for a problem not seen before
+- **THEN** system writes it to /var/lib/monitor/proposals/<workload>/<problem-key>.json
+
+#### Scenario: Recurring problem
+- **WHEN** a proposal is generated for a problem that already has a file
+- **THEN** system updates that file in place rather than creating a new one, accumulating total_occurrences and advancing last_seen while preserving first_seen
+
+#### Scenario: Re-analysis of a known problem
+- **WHEN** a problem is analysed again after its cached analysis expired
+- **THEN** system replaces the analysis content with the newer explanation and increments analysis_count
+
+#### Scenario: Occurrence served from cache
+- **WHEN** an occurrence reuses a cached analysis rather than running inference
+- **THEN** system updates occurrence tracking without incrementing analysis_count
 
 #### Scenario: Storage failure
 - **WHEN** proposal cannot be written to disk
@@ -61,6 +73,10 @@ The system SHALL include metadata in each proposal: timestamp, workload identifi
 #### Scenario: Complete metadata
 - **WHEN** proposal is generated
 - **THEN** metadata includes ISO 8601 timestamp, service name/version, log file path, line number, and analysis duration in milliseconds
+
+#### Scenario: Problem lifetime
+- **WHEN** a proposal describes a problem that has recurred
+- **THEN** metadata includes first_seen, last_seen, total_occurrences, and analysis_count so an operator can judge duration and blast radius
 
 ### Requirement: Human review indicators
 The system SHALL mark proposals requiring human review based on confidence score and error severity.

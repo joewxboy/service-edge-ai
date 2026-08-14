@@ -144,6 +144,7 @@ class MonitorService:
             "analyses_failed": self.analyzer.failed_count,
             "analyses_dropped": self.analyzer.dropped_count,
             "proposals_written": self.generator.written_count,
+            "proposals_updated": self.generator.updated_count,
             "proposal_storage_failures": self.generator.storage_failures,
             **(
                 self.context_library.describe()

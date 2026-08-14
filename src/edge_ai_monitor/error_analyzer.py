@@ -159,8 +159,18 @@ class ErrorAnalyzer:
             cached = self._get_cached(signature)
             if cached is not None:
                 logger.debug("reusing cached analysis for %s", signature)
+                # occurrences carries how many NEW occurrences this emission
+                # represents, not the cached total: the proposal accumulates it,
+                # so re-sending the cached count would multiply it.
                 self._emit(
-                    AnalysisResult(**{**cached.__dict__, "event": event, "from_cache": True})
+                    AnalysisResult(
+                        **{
+                            **cached.__dict__,
+                            "event": event,
+                            "from_cache": True,
+                            "occurrences": 1,
+                        }
+                    )
                 )
                 return True
 

@@ -1,9 +1,11 @@
 """Generation and persistence of remediation proposals."""
 
+import hashlib
 import json
 import logging
 import os
 import re
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +43,20 @@ def _utcnow() -> str:
 def _safe_dirname(value: str) -> str:
     """Make a workload id safe to use as a single path segment."""
     return re.sub(r"[^A-Za-z0-9._-]", "_", value) or "unknown"
+
+
+def problem_key(result: AnalysisResult) -> str:
+    """Stable identifier for the underlying problem, not the occurrence.
+
+    Derived from the error signature, which already normalises digits so that
+    timestamps and counters do not make every occurrence look distinct. One
+    problem gets one proposal file, updated in place as it recurs.
+    """
+    try:
+        signature = result.event.signature()
+    except Exception:  # pragma: no cover - defensive
+        signature = f"{result.event.workload_id}:{result.error_summary}"
+    return hashlib.sha256(signature.encode("utf-8", errors="replace")).hexdigest()[:16]
 
 
 @dataclass
@@ -92,7 +108,9 @@ class RemediationGenerator:
 
     def __init__(self, proposal_dir: str = DEFAULT_PROPOSAL_DIR):
         self.proposal_dir = Path(proposal_dir)
+        self._lock = threading.RLock()
         self.written_count = 0
+        self.updated_count = 0
         self.storage_failures = 0
 
     # ---------------- generation ----------------
@@ -151,9 +169,18 @@ class RemediationGenerator:
 
     def _build_metadata(self, result: AnalysisResult) -> Dict[str, Any]:
         event = result.event
+        now = _utcnow()
         return {
-            "timestamp": _utcnow(),
-            "detected_at": event.timestamp,
+            "timestamp": now,
+            # A proposal describes an ongoing problem, not a single event, so it
+            # tracks the span over which that problem has been occurring.
+            "first_seen": event.timestamp,
+            "last_seen": event.timestamp,
+            "total_occurrences": result.occurrences,
+            # Counts real inferences behind this proposal, not file writes: a
+            # cache hit updates the occurrence tally without re-analysing.
+            "analysis_count": 1,
+            "problem_key": problem_key(result),
             "workload_id": event.workload_id,
             "service_name": result.workload_metadata.get("service_name"),
             "service_version": result.workload_metadata.get("version"),
@@ -168,14 +195,56 @@ class RemediationGenerator:
     # ---------------- persistence ----------------
 
     def proposal_path(self, proposal: Proposal) -> Path:
-        """Destination path: <dir>/<workload>/<timestamp>.json."""
-        workload = _safe_dirname(str(proposal.metadata.get("workload_id", "unknown")))
-        stamp = _safe_dirname(str(proposal.metadata.get("timestamp", _utcnow())))
-        return self.proposal_dir / workload / f"{stamp}.json"
+        """Destination path: <dir>/<workload>/<problem-key>.json.
 
-    def persist(self, proposal: Proposal) -> Optional[Path]:
+        Keyed by problem rather than by timestamp, so a recurring error updates
+        one file instead of accumulating one per occurrence.
+        """
+        workload = _safe_dirname(str(proposal.metadata.get("workload_id", "unknown")))
+        key = _safe_dirname(str(proposal.metadata.get("problem_key", "unknown")))
+        return self.proposal_dir / workload / f"{key}.json"
+
+    @staticmethod
+    def _merge_with_existing(
+        proposal: Proposal, path: Path, from_cache: bool = False
+    ) -> Proposal:
+        """Fold a recurrence into the proposal already on disk.
+
+        Occurrence history accumulates across restarts; the analysis itself is
+        replaced, so the freshest explanation always wins.
+        """
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            # An unreadable or corrupt file is replaced rather than trusted.
+            return proposal
+
+        old = previous.get("metadata")
+        if not isinstance(old, dict):
+            return proposal
+
+        metadata = proposal.metadata
+        metadata["first_seen"] = old.get("first_seen") or metadata["first_seen"]
+        metadata["total_occurrences"] = (
+            int(old.get("total_occurrences") or 0) + proposal.metadata["total_occurrences"]
+        )
+        previous_analyses = int(old.get("analysis_count") or 0)
+        metadata["analysis_count"] = previous_analyses + (0 if from_cache else 1)
+        return proposal
+
+    def persist(self, proposal: Proposal, from_cache: bool = False) -> Optional[Path]:
         """Write a proposal to disk, falling back to stdout logging on failure."""
         path = self.proposal_path(proposal)
+        # Both the analyzer thread and the cache-hit path in submit() reach here.
+        with self._lock:
+            is_update = path.exists()
+            if is_update:
+                proposal = self._merge_with_existing(proposal, path, from_cache)
+            return self._write(proposal, path, is_update)
+
+    def _write(
+        self, proposal: Proposal, path: Path, is_update: bool = False
+    ) -> Optional[Path]:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             # Write to a temp file then rename so readers never see a partial file.
@@ -191,17 +260,27 @@ class RemediationGenerator:
             print(proposal.to_json(), flush=True)
             return None
 
-        self.written_count += 1
-        logger.info(
-            "wrote %s severity proposal for %s to %s",
-            proposal.severity,
-            proposal.metadata.get("workload_id"),
-            path,
-        )
+        if is_update:
+            self.updated_count += 1
+            logger.info(
+                "updated %s severity proposal for %s (%s occurrences total) at %s",
+                proposal.severity,
+                proposal.metadata.get("workload_id"),
+                proposal.metadata.get("total_occurrences"),
+                path,
+            )
+        else:
+            self.written_count += 1
+            logger.info(
+                "wrote %s severity proposal for %s to %s",
+                proposal.severity,
+                proposal.metadata.get("workload_id"),
+                path,
+            )
         return path
 
     def handle_result(self, result: AnalysisResult) -> Proposal:
         """Generate and persist a proposal for one analysis result."""
         proposal = self.generate(result)
-        self.persist(proposal)
+        self.persist(proposal, from_cache=getattr(result, "from_cache", False))
         return proposal

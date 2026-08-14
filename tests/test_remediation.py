@@ -9,6 +9,7 @@ from edge_ai_monitor.log_monitor import ErrorEvent
 from edge_ai_monitor.remediation import (
     DISCLAIMER,
     RemediationGenerator,
+    problem_key,
     requires_human_review,
 )
 
@@ -172,7 +173,7 @@ def test_metadata_records_occurrence_count():
 # ---------------- persistence ----------------
 
 
-def test_proposal_written_to_workload_timestamp_path(tmp_path):
+def test_proposal_written_to_workload_problem_key_path(tmp_path):
     generator = RemediationGenerator(proposal_dir=str(tmp_path))
     proposal = generator.generate(make_result())
     path = generator.persist(proposal)
@@ -222,3 +223,134 @@ def test_workload_id_is_sanitised_for_filesystem(tmp_path):
     path = generator.persist(generator.generate(result))
     assert "/" not in path.parent.name
     assert ":" not in path.name
+
+
+# ---------------- deduplication: one file per problem ----------------
+
+
+def test_recurring_error_updates_one_file(tmp_path):
+    """A recurring error must not accumulate one proposal file per occurrence."""
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    for _ in range(10):
+        generator.handle_result(make_result())
+
+    files = list(tmp_path.rglob("*.json"))
+    assert len(files) == 1
+
+
+def test_occurrences_accumulate_across_recurrences(tmp_path):
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    generator.handle_result(make_result(occurrences=3))
+    generator.handle_result(make_result(occurrences=2))
+
+    payload = json.loads(list(tmp_path.rglob("*.json"))[0].read_text())
+    assert payload["metadata"]["total_occurrences"] == 5
+    assert payload["metadata"]["analysis_count"] == 2  # both were real analyses
+
+
+def test_first_seen_is_preserved_and_last_seen_advances(tmp_path):
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    first = make_result()
+    first.event.timestamp = "2026-08-14T10:00:00+00:00"
+    generator.handle_result(first)
+
+    later = make_result()
+    later.event.timestamp = "2026-08-14T12:00:00+00:00"
+    generator.handle_result(later)
+
+    metadata = json.loads(list(tmp_path.rglob("*.json"))[0].read_text())["metadata"]
+    assert metadata["first_seen"] == "2026-08-14T10:00:00+00:00"
+    assert metadata["last_seen"] == "2026-08-14T12:00:00+00:00"
+
+
+def test_distinct_problems_get_distinct_files(tmp_path):
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    generator.handle_result(make_result())
+
+    other = make_result()
+    other.event.line = "ERROR disk full on /var"
+    generator.handle_result(other)
+
+    assert len(list(tmp_path.rglob("*.json"))) == 2
+
+
+def test_problem_key_ignores_embedded_numbers(tmp_path):
+    """Timestamps and counters must not fragment one problem into many files."""
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    for i in range(5):
+        result = make_result()
+        result.event.line = f"2026-08-14T12:0{i}:00Z ERROR retry {i} of 5 failed"
+        generator.handle_result(result)
+
+    assert len(list(tmp_path.rglob("*.json"))) == 1
+
+
+def test_latest_analysis_replaces_the_previous_one(tmp_path):
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    generator.handle_result(make_result(root_cause="First guess", severity="low"))
+    generator.handle_result(make_result(root_cause="Better guess", severity="high"))
+
+    payload = json.loads(list(tmp_path.rglob("*.json"))[0].read_text())
+    assert payload["root_cause"] == "Better guess"
+    assert payload["severity"] == "high"
+
+
+def test_cache_hits_do_not_inflate_analysis_count(tmp_path):
+    """analysis_count tracks real inferences, not file writes."""
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    generator.handle_result(make_result())                      # real analysis
+    for _ in range(5):
+        generator.handle_result(make_result(from_cache=True))   # cache hits
+
+    metadata = json.loads(list(tmp_path.rglob("*.json"))[0].read_text())["metadata"]
+    assert metadata["analysis_count"] == 1
+    assert metadata["total_occurrences"] == 6
+
+
+def test_create_and_update_are_counted_separately(tmp_path):
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    generator.handle_result(make_result())
+    generator.handle_result(make_result())
+    generator.handle_result(make_result())
+
+    assert generator.written_count == 1
+    assert generator.updated_count == 2
+
+
+def test_corrupt_existing_file_is_replaced_not_trusted(tmp_path):
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+    generator.handle_result(make_result())
+    path = list(tmp_path.rglob("*.json"))[0]
+    path.write_text("{ not valid json")
+
+    generator.handle_result(make_result(occurrences=4))
+    payload = json.loads(path.read_text())
+    assert payload["metadata"]["total_occurrences"] == 4
+    assert payload["metadata"]["analysis_count"] == 1
+
+
+def test_problem_key_is_stable_and_short():
+    key = problem_key(make_result())
+    assert key == problem_key(make_result())
+    assert len(key) == 16
+
+
+def test_concurrent_writers_do_not_lose_occurrences(tmp_path):
+    """The analyzer thread and the cache-hit path both persist proposals."""
+    import threading
+
+    generator = RemediationGenerator(proposal_dir=str(tmp_path))
+
+    def worker():
+        for _ in range(20):
+            generator.handle_result(make_result(occurrences=1))
+
+    threads = [threading.Thread(target=worker) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    payload = json.loads(list(tmp_path.rglob("*.json"))[0].read_text())
+    assert payload["metadata"]["total_occurrences"] == 80
+    assert len(list(tmp_path.rglob("*.json"))) == 1

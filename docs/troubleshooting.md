@@ -48,7 +48,7 @@ cannot reach the agent at *any* address — `host.docker.internal` and
 `"network": "host"`; if you are running the image by hand, use:
 
 ```shell
-docker run --network host ... joewxboy/edge-ai:0.0.5
+docker run --network host ... joewxboy/edge-ai:0.0.6
 ```
 
 Under host networking the container's bundled Ollama also finds port 11434

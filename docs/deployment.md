@@ -152,7 +152,7 @@ A healthy response looks like:
 ## 7. Read the proposals
 
 Proposals are written inside the container to
-`/var/lib/monitor/proposals/<workload>/<timestamp>.json`, backed by the
+`/var/lib/monitor/proposals/<workload>/<problem-key>.json`, backed by the
 `edge-ai-monitor-state` volume:
 
 ```shell

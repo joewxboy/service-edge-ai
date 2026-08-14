@@ -145,6 +145,21 @@ deployment-agnostic. See design.md Decision 6a.
 - [x] 15.9 Write unit tests for ContextLibrary and prompt integration
 - [x] 15.10 Verify against the live model: measured A/B showing correct root cause with context
 
+## 16. Proposal Deduplication
+
+Found while writing the operations guide: a recurring error wrote one proposal
+file per occurrence, including cache hits where no inference ran. Measured on a
+live node: 137 files for 14 distinct root causes.
+
+- [x] 16.1 Key proposals by a stable problem hash instead of a timestamp
+- [x] 16.2 Merge recurrences into the existing file in place
+- [x] 16.3 Track first_seen, last_seen, and total_occurrences across recurrences
+- [x] 16.4 Count real inferences in analysis_count, not file writes
+- [x] 16.5 Guard the read-modify-write against the two threads that reach it
+- [x] 16.6 Replace rather than trust a corrupt existing proposal file
+- [x] 16.7 Surface proposals_updated on the health endpoint
+- [x] 16.8 Write tests, including a concurrency test
+
 ## 13. Documentation
 
 - [x] 13.1 Create README.md with project overview

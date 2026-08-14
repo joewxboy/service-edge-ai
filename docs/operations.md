@@ -16,10 +16,11 @@ Every command here has been run against a live node.
 
 ### Where proposals live
 
-One JSON file per analysis, inside the `edge-ai-monitor-state` volume:
+One JSON file **per distinct problem** (not per occurrence), inside the
+`edge-ai-monitor-state` volume:
 
 ```
-/var/lib/monitor/proposals/<org>_<service>_<version>_<arch>/<timestamp>.json
+/var/lib/monitor/proposals/<org>_<service>_<version>_<arch>/<problem-key>.json
 ```
 
 There is no query API and no CLI — proposals are files, and you read them with
@@ -114,16 +115,27 @@ docker run --rm -v edge-ai-monitor-state:/state busybox \
 | `severity` | `critical` / `high` / `medium` / `low` |
 | `confidence` | Below `0.5` the proposal carries diagnostic rather than corrective steps |
 | `requires_human_review` | `false` only for low/medium severity at ≥ 0.8 confidence |
-| `metadata.occurrences` | How many times it fired in the aggregation window — a proxy for blast radius |
-| `metadata.line_number` | Where to look in the log yourself |
+| `metadata.total_occurrences` | How often this problem has fired in total — blast radius |
+| `metadata.first_seen` / `last_seen` | How long it has been happening, and whether it still is |
+| `metadata.analysis_count` | How many times it was actually re-analysed; a high count with an unchanged root cause means the explanation is stable |
+| `metadata.line_number` | Where to look in the log yourself (most recent occurrence) |
 | `metadata.analysis_duration_ms` | Slow analyses signal an overloaded node |
 
-> ⚠️ **Proposal count is not problem count.** A recurring error produces a new
-> proposal file every time it fires, even when the analysis was served from
-> cache and no inference ran. On a live node we measured **117 files
-> representing 12 distinct root causes** — roughly 91% duplicates. Always
-> deduplicate on `root_cause` or `error_summary` before judging scale, and see
-> [§5 Storage growth](#storage-growth) for retention.
+**Is it still happening?** Compare `last_seen` to now:
+
+```shell
+proposals -r 'sort_by(.metadata.last_seen) | reverse | .[]
+  | "\(.metadata.last_seen[0:19])  x\(.metadata.total_occurrences)  \(.severity)  \(.error_summary[0:46])"'
+```
+
+A `last_seen` that stopped advancing after your fix is the signal that it worked.
+
+> **One file per problem.** A recurring error updates its existing proposal
+> rather than writing a new one, so the file count *is* the problem count.
+> `total_occurrences` tells you how often it has fired, `first_seen`/`last_seen`
+> over what span, and `analysis_count` how many times it was actually
+> re-analysed. Proposals written before this behaviour existed are one-per-event
+> and can be cleared out; see [§5 Storage growth](#storage-growth).
 
 ### Getting them off the node
 
@@ -450,21 +462,31 @@ delays shedding; it adds no throughput.
 
 ### Storage growth
 
-**The most likely thing to bite you in long-running production.** A recurring
-error writes a proposal file on every occurrence, including when the analysis
-came from cache. Measured: 117 files for 12 distinct root causes.
+Proposals are keyed by problem, so storage grows with the number of *distinct*
+problems, not with time or error frequency. A workload stuck in a crash loop for
+a month occupies one file, a few kilobytes.
 
-At one error per minute that is ~1,400 files/day, ~2 GB/year for a single
-unresolved condition — on hardware that may have 8 GB of storage total.
+That makes unbounded growth unlikely, but two cases still accumulate:
 
-**Set up retention before you need it:**
+- **Problems that were fixed** — the file remains after the error stops.
+- **Workloads that were removed** — their directory is never cleaned up.
+
+Retention is still worth configuring, just far less urgently:
 
 ```shell
 # /etc/cron.daily/edge-ai-proposals
 #!/bin/sh
+# Remove proposals for problems that have not recurred in 30 days.
 docker run --rm -v edge-ai-monitor-state:/state busybox \
-  find /state/proposals -name '*.json' -mtime +14 -delete
+  find /state/proposals -name '*.json' -mtime +30 -delete
 ```
+
+Because a live problem's file is rewritten on every occurrence, its mtime tracks
+`last_seen` — so age-based deletion removes exactly the resolved ones.
+
+> **Upgrading from an older monitor?** Versions before proposal deduplication
+> wrote one file per occurrence and can leave thousands behind. They are safe to
+> delete wholesale; nothing reads proposals back.
 
 Check current usage:
 
@@ -519,6 +541,7 @@ then consider a larger model.
 ```shell
 curl -sS http://127.0.0.1:8080/health | jq '{
   analysis_queue_depth, analyses_dropped, analyses_failed,
+  proposals_written, proposals_updated,
   proposal_storage_failures, workloads_monitored, node_context_documents}'
 ```
 
@@ -527,6 +550,8 @@ curl -sS http://127.0.0.1:8080/health | jq '{
 | `analyses_failed` climbing | Timeout too low, or the runtime is down |
 | `analyses_dropped` non-zero | Arrival exceeds capacity — narrow patterns |
 | `analysis_queue_depth` pinned at max | Sustained overload |
+| `proposals_written` climbing steadily | New *distinct* problems appearing — worth investigating |
+| `proposals_updated` climbing, `written` flat | Known problems recurring; no new failure modes |
 | `proposal_storage_failures` non-zero | Disk full or unwritable — check retention |
 | `workloads_monitored` dropping to 0 | Workloads stopped, or opt-in was lost on republish |
 | `node_context_documents` at 0 | Context directory not mounted |

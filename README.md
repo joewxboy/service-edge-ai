@@ -27,7 +27,8 @@ explicitly asks for it.
    documentation (SKILL.md files, runbooks) to a local Ollama model, which
    returns a structured JSON verdict with a severity and confidence score.
 5. **Proposal** — writes an actionable proposal to
-   `/var/lib/monitor/proposals/<workload>/<timestamp>.json`.
+   `/var/lib/monitor/proposals/<workload>/<problem-key>.json` — one file per
+   distinct problem, updated in place as it recurs.
 
 See [docs/architecture.md](docs/architecture.md) for the component and data-flow
 diagrams.
@@ -190,6 +191,7 @@ curl -sS http://127.0.0.1:8080/health | jq
   "analyses_failed": 0,
   "analyses_dropped": 0,
   "proposals_written": 4,
+  "proposals_updated": 37,
   "proposal_storage_failures": 0
 }
 ```

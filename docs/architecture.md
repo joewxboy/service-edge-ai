@@ -65,7 +65,7 @@ sequenceDiagram
     M-->>Q: JSON analysis
     Q->>P: AnalysisResult
     P->>P: build proposal, flag for review
-    P-->>P: write <workload>/<timestamp>.json
+    P-->>P: write/update <workload>/<problem-key>.json
 ```
 
 ## Threading model

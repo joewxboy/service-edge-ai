@@ -2,7 +2,7 @@
 # Built from the Dockerfile in this repo; see `make build` / `make push-multiarch`.
 export DOCKER_IMAGE_BASE ?= joewxboy/edge-ai
 export DOCKER_IMAGE_NAME ?= edge-ai
-export DOCKER_IMAGE_VERSION ?= 0.0.5
+export DOCKER_IMAGE_VERSION ?= 0.0.6
 export DOCKER_VOLUME_NAME ?= edge-ai-storage
 # DockerHub ID of the third party providing the image (usually yours if building and pushing)
 export DOCKER_HUB_ID ?= joewxboy
@@ -12,7 +12,7 @@ export HZN_ORG_ID ?= examples
 export DEPLOYMENT_POLICY_NAME ?= deployment-policy-edge-ai
 export NODE_POLICY_NAME ?= node-policy-edge-ai
 export SERVICE_NAME ?= service-edge-ai
-export SERVICE_VERSION ?= 0.0.6
+export SERVICE_VERSION ?= 0.0.7
 # Default ARCH to the architecture of this machine (assumes hzn CLI installed)
 export ARCH ?= amd64
 # Detect Operating System running Make
@@ -26,14 +26,14 @@ check:
 	@echo "====================="
 	@echo "DOCKER_IMAGE_BASE    default: joewxboy/edge-ai          actual: ${DOCKER_IMAGE_BASE}"
 	@echo "DOCKER_IMAGE_NAME    default: edge-ai                    actual: ${DOCKER_IMAGE_NAME}"
-	@echo "DOCKER_IMAGE_VERSION default: 0.0.5                      actual: ${DOCKER_IMAGE_VERSION}"
+	@echo "DOCKER_IMAGE_VERSION default: 0.0.6                      actual: ${DOCKER_IMAGE_VERSION}"
 	@echo "DOCKER_VOLUME_NAME   default: edge-ai-storage            actual: ${DOCKER_VOLUME_NAME}"
 	@echo "DOCKER_HUB_ID        default: joewxboy                   actual: ${DOCKER_HUB_ID}"
 	@echo "HZN_ORG_ID           default: examples                   actual: ${HZN_ORG_ID}"
 	@echo "DEPLOYMENT_POLICY_NAME default: deployment-policy-edge-ai actual: ${DEPLOYMENT_POLICY_NAME}"
 	@echo "NODE_POLICY_NAME     default: node-policy-edge-ai        actual: ${NODE_POLICY_NAME}"
 	@echo "SERVICE_NAME         default: service-edge-ai            actual: ${SERVICE_NAME}"
-	@echo "SERVICE_VERSION      default: 0.0.6                      actual: ${SERVICE_VERSION}"
+	@echo "SERVICE_VERSION      default: 0.0.7                      actual: ${SERVICE_VERSION}"
 	@echo "ARCH                 default: amd64                      actual: ${ARCH}"
 	@echo ""
 	@echo "=================="

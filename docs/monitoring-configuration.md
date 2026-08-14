@@ -146,7 +146,8 @@ The first option is strongly preferred — container IDs change on every restart
    comparing, so `retry 1 of 5` and `retry 2 of 5` count as the same error.
 3. Sends the window plus your service metadata to the local LLM.
 4. Writes a remediation proposal to
-   `/var/lib/monitor/proposals/<workload>/<timestamp>.json`.
+   `/var/lib/monitor/proposals/<workload>/<problem-key>.json`. A recurring
+   error updates that one file rather than creating a new one each time.
 
 Nothing leaves the node: inference is local, and proposals are written to local
 storage only.
