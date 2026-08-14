@@ -34,6 +34,7 @@ Supporting reference:
 
 | Document | Contents |
 |---|---|
+| [operations.md](operations.md) | **Daily operations: find errors, remediate, roll back, tune context, tune performance** |
 | [deployment.md](deployment.md) | Build, publish, register, verify |
 | [tuning.md](tuning.md) | **Model selection, timeouts, throughput, and every config variable** |
 | [context-and-steering.md](context-and-steering.md) | Node-wide knowledge injection |

@@ -1,5 +1,9 @@
 # Troubleshooting
 
+This page is for when **the monitor itself** is misbehaving. For the normal
+operational loop — reading proposals, remediating, rolling back — see
+[operations.md](operations.md).
+
 Start here:
 
 ```shell

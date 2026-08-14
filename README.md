@@ -234,6 +234,7 @@ out, and the constraints that shape it. Otherwise
 | [context-and-steering.md](docs/context-and-steering.md) | Steering the model with SKILL.md files, runbooks, wiki content |
 | [monitoring-variables.md](horizon/monitoring-variables.md) | Full `MONITORING_*` variable reference |
 | [monitoring-configuration.md](docs/monitoring-configuration.md) | Log mounts and error patterns in depth |
+| [operations.md](docs/operations.md) | For operators: finding errors, remediating, rolling back, performance |
 | [deployment.md](docs/deployment.md) | For node operators: build, publish, register, verify |
 | [architecture.md](docs/architecture.md) | Components, data flow, threading, failure behaviour |
 | [llm-models.md](docs/llm-models.md) | Model selection, measured timings, updates, air-gapped nodes |

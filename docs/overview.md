@@ -213,6 +213,7 @@ is the most valuable thing in the directory.
 |---|---|
 | Get your workload monitored | [service-developer-guide.md](service-developer-guide.md) |
 | Deploy the monitor to a node | [deployment.md](deployment.md) |
+| Run it in production day to day | [operations.md](operations.md) |
 | Choose a model or tune settings | [tuning.md](tuning.md) |
 | Make the analyses smarter | [context-and-steering.md](context-and-steering.md) |
 | Understand the internals | [architecture.md](architecture.md) |
