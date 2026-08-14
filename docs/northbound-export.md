@@ -82,9 +82,21 @@ leaving the node.
 
 ## Configuring sinks
 
-Sinks live under `export.sinks` in `config/config.yaml`, keyed by a name you
-choose. That name appears in health output and in each proposal's delivery
-record.
+Sinks live under `export.sinks`, keyed by a name you choose. That name appears in
+health output and in each proposal's delivery record.
+
+**Sinks are configured through a mounted config file, not environment
+variables.** A sink is a nested structure and `MONITOR_*` variables are flat, so
+the service definition mounts the host's config:
+
+```json
+"binds": ["/etc/edge-ai-monitor/config.yaml:/etc/edge-ai-monitor/config.yaml:ro"]
+```
+
+Edit `/etc/edge-ai-monitor/config.yaml` on the node and restart the service —
+no rebuild, no republish. The scalar settings (`MONITOR_EXPORT_ENABLED`,
+`MONITOR_EXPORT_NODE_ID`, spool sizing) remain available as environment
+overrides for per-node tuning through `userInput`.
 
 ### Credentials
 

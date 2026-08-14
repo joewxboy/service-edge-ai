@@ -69,7 +69,8 @@
           "edge-ai-monitor-state:/var/lib/monitor:rw",
           "edge-ai-monitor-models:/var/lib/ollama:rw",
           "/var/log/workloads:/var/log/workloads:ro",
-          "/etc/edge-ai-monitor/context:/etc/edge-ai-monitor/context:ro"
+          "/etc/edge-ai-monitor/context:/etc/edge-ai-monitor/context:ro",
+          "/etc/edge-ai-monitor/config.yaml:/etc/edge-ai-monitor/config.yaml:ro"
         ],
         "ports": [
           {

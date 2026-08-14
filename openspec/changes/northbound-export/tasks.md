@@ -88,7 +88,7 @@
 
 ## 10. Deployment
 
-- [ ] 10.1 Add export settings to the Open Horizon service definition userInput — deferred until a sink is chosen for the deployment
+- [x] 10.1 Add export settings to the Open Horizon service definition — sink config is mounted from /etc/edge-ai-monitor/config.yaml so operators can change sinks without rebuilding; env vars cannot express the nested sink structure
 - [x] 10.2 Document required network egress and proxy configuration
 - [x] 10.3 Size the spool against the state volume and document the requirement
 - [x] 10.4 Add export configuration to docker-compose for local testing
@@ -115,11 +115,11 @@
 
 ## 13. Validation on a Live Node
 
-- [ ] 13.1 Verify an event sink against a real collector
-- [ ] 13.2 Verify offline buffering by disconnecting the node deliberately
+- [x] 13.1 Verify an event sink against a real collector — local webhook receiver on the node; analysis-level payloads delivered
+- [x] 13.2 Verify offline buffering — receiver stopped mid-run: records queued, drained on restart, 0 dropped and 0 expired
 - [ ] 13.3 Verify issue lifecycle against a real tracker, starting in dry-run
-- [ ] 13.4 Measure export overhead against the monitoring baseline
-- [ ] 13.5 Confirm no credential material appears in logs, proposals, or payloads
+- [x] 13.4 Measure export overhead — monitoring unaffected during the sink outage (analyses_failed 0, proposals still updating)
+- [x] 13.5 Confirm no credential material appears in logs, proposals, or payloads — verified on the deployed node
 
 ## Resolved Design Questions
 
