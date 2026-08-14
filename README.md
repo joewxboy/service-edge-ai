@@ -221,10 +221,14 @@ tests drive real files in a temp directory. Sample logs and API fixtures live in
 
 ## Documentation
 
-Start at **[docs/README.md](docs/README.md)**, which routes by role.
+**New to this repository?** Start with
+**[docs/overview.md](docs/overview.md)** — what this is, how the code is laid
+out, and the constraints that shape it. Otherwise
+[docs/README.md](docs/README.md) routes by role.
 
 | Document | Contents |
 |---|---|
+| [overview.md](docs/overview.md) | **Repository orientation for newcomers** |
 | [service-developer-guide.md](docs/service-developer-guide.md) | **Start here to get your workload monitored** |
 | [tuning.md](docs/tuning.md) | Model selection, timeouts, throughput, every config variable |
 | [context-and-steering.md](docs/context-and-steering.md) | Steering the model with SKILL.md files, runbooks, wiki content |

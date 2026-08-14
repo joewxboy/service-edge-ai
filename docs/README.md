@@ -1,6 +1,10 @@
 # Documentation
 
-Start with the guide for your role.
+**New to this repository?** Start with
+**[overview.md](overview.md)** — what this project is, how the code is laid out,
+and the non-obvious constraints that shape it.
+
+Otherwise, start with the guide for your role.
 
 ## I own a workload and want it monitored
 
@@ -40,8 +44,10 @@ Supporting reference:
 
 | Document | Contents |
 |---|---|
+| [overview.md](overview.md) | **Repository orientation — read this first** |
 | [architecture.md](architecture.md) | Components, data flow, threading, failure behaviour |
 | [../README.md](../README.md) | Project overview and configuration reference |
+| [../openspec/changes/llm-workload-monitor/](../openspec/changes/llm-workload-monitor/) | The specification this was built from |
 
 ---
 
