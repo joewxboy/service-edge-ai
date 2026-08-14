@@ -82,38 +82,82 @@ This design implements an autonomous LLM-based monitoring service for Open Horiz
 
 **Endpoints Used:**
 - `GET /node` - Node registration status
-- `GET /service/config` - Service configurations and metadata
+- `GET /service` - Local service definitions, including the deployment string
+  that carries each workload's `MONITORING_*` opt-in variables
+- `GET /service/config` - Operator-supplied service configuration, when present
 - `GET /agreement` - Active agreements and workload state
+
+**Discovery unions `/agreement` and `/service`.** `/service/config` lists only
+services the operator supplied user input for, and is empty on a
+policy-registered node; a workload can be running under an active agreement
+without appearing there at all. Agreements establish what is *running*, while
+the service definitions carry the monitoring opt-in. Neither source alone sees
+every workload.
 
 **Alternatives Considered:**
 - Event-based: Anax doesn't expose event stream, would require modifications
 - Container runtime API: Less reliable, doesn't capture Open Horizon semantics
 
-### 4. Permission Model: Service Definition Extension
+### 4. Permission Model: Deployment Environment Variables
 
-**Decision:** Add optional `monitoring` section to service definition JSON
+**Decision:** Workloads opt in with `MONITORING_*` environment variables declared
+in the `deployment` string of their service definition.
 
 **Format:**
 ```json
 {
-  "monitoring": {
-    "enabled": true,
-    "logPaths": ["/var/log/app.log", "/var/log/error.log"],
-    "errorPatterns": ["ERROR", "FATAL", "Exception"]
+  "deployment": {
+    "services": {
+      "sensor": {
+        "image": "examples/sensor:1.2.0",
+        "environment": [
+          "MONITORING_ENABLED=true",
+          "MONITORING_LOG_PATHS=/var/log/workloads/sensor/app.log",
+          "MONITORING_ERROR_PATTERNS=ERROR,FATAL,Exception",
+          "MONITORING_CONTEXT_PATHS=/var/log/workloads/sensor/SKILL.md"
+        ]
+      }
+    }
   }
 }
 ```
 
+`MONITORING_LOG_PATHS`, `MONITORING_ERROR_PATTERNS`, and
+`MONITORING_CONTEXT_PATHS` are comma-separated. A value beginning with `[` is
+parsed as a JSON array instead, so patterns containing commas (`a{1,3}`) remain
+expressible. `MONITORING_CONTEXT_PATHS` names documentation injected into this
+workload's prompts (see Decision 6a).
+
+The monitor reads these from the anax API at
+`GET /service` → `definitions.active[].deployment.services.<name>.environment`.
+
 **Rationale:**
-- Explicit opt-in (privacy-first)
-- Declarative configuration
-- Extensible for future monitoring options
-- Follows Open Horizon service definition patterns
+- **A custom top-level `monitoring` section does not survive publishing.** The
+  Open Horizon exchange stores only its known service schema fields and silently
+  discards unknown ones. Verified against a live hub: a published definition
+  containing `monitoring` returns from `hzn exchange service list -l` with no
+  such key, so the field can never reach the node.
+- The `deployment` string is stored verbatim and signed, so anything inside it —
+  including `environment` — round-trips intact to the agent. Verified
+  empirically.
+- Environment variables are already the standard Open Horizon mechanism for
+  passing per-service settings, so this adds no new concepts for developers.
+- Still an explicit, declarative, per-workload opt-in: absent variables mean no
+  monitoring.
+
+**Trade-off:** Flat strings are less structured than nested JSON, so the monitor
+validates and normalises the values itself (see the workload-discovery spec).
 
 **Alternatives Considered:**
-- Environment variables: Less structured, harder to validate
-- Separate config file: Additional deployment complexity
-- Implicit monitoring: Privacy concerns, no control
+- **Top-level `monitoring` section:** the original design; does not work, as
+  above.
+- **`userInput` variables:** retained by the exchange, but `/service/config` is
+  empty on a policy-registered node even when the deployment policy supplies
+  user input, so the values never become readable locally.
+- **Service policy properties:** survive, but reading them requires querying the
+  exchange with credentials, breaking the local-only/offline constraint.
+- **Separate config file:** additional deployment complexity.
+- **Implicit monitoring:** privacy concerns, no control.
 
 ### 5. Log Access: Filesystem Mounts
 
@@ -155,6 +199,45 @@ This design implements an autonomous LLM-based monitoring service for Open Horiz
 - Continuous LLM analysis: Too resource-intensive for edge
 - Pattern matching only: Misses complex issues, no remediation
 - Batch analysis: Delays detection, misses time-sensitive issues
+
+### 6a. Prompt Steering: Injected Domain Knowledge
+
+**Decision:** Inject operator- and developer-supplied documentation (SKILL.md
+files, runbooks, wiki exports) into the analysis prompt.
+
+**Rationale:**
+- The model knows nothing about the deployment it watches. From log lines alone
+  it produces generically correct but deployment-agnostic advice, and sometimes
+  advice that is wrong for the architecture.
+- Measured on a live node with `llama3.2:3b-instruct-q4_K_M`: for
+  `connection refused on db:5432`, an unguided analysis recommended verifying and
+  restarting the database. Given a 733-byte SKILL.md explaining that the hostname
+  resolves to a connection-pool sidecar and that the database must NOT be
+  restarted, the same model identified the sidecar pool exhaustion and returned
+  the runbook's exact recovery commands — and did so faster (33s vs 75s).
+
+**Two sources:**
+- **Node-wide** — files in `MONITOR_CONTEXT_DIR`, applied to every analysis,
+  owned by the node operator.
+- **Per-workload** — files named by `MONITORING_CONTEXT_PATHS`, applied to one
+  workload, owned by the service developer. Consistent with the other
+  `MONITORING_*` opt-in variables.
+
+**Budgets:** a small quantized model has a small context window, and guidance
+competes with the log lines that describe the error. Defaults are 4000 bytes per
+file and 8000 bytes per prompt. Per-workload documents are assembled first so
+the most specific knowledge survives budget pressure.
+
+**Freshness:** files are read at analysis time and cached against mtime/size, so
+editing a runbook takes effect on the next error without a restart or republish.
+
+**Alternatives Considered:**
+- **Fine-tuning a model per deployment:** far too heavy for edge nodes, and
+  stale the moment the deployment changes.
+- **Embedding knowledge in the system prompt at build time:** requires a rebuild
+  per deployment and cannot carry per-workload knowledge.
+- **Retrieval over a vector store:** more infrastructure and memory than an edge
+  node can spare, for a corpus small enough to fit in the prompt outright.
 
 ### 7. Model Selection: Llama 3.2 3B Quantized
 

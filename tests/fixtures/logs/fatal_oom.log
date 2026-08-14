@@ -1,0 +1,4 @@
+2026-08-13T12:20:00Z INFO  inference: model llama3.2:3b loaded in 8.4s
+2026-08-13T12:20:31Z WARN  inference: resident memory 3.6GB of 4.0GB limit
+2026-08-13T12:20:44Z FATAL inference: out of memory allocating 512MB tensor buffer
+2026-08-13T12:20:44Z CRITICAL inference: process terminating, cannot recover

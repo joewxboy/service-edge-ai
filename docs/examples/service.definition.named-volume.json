@@ -1,0 +1,26 @@
+{
+  "_comment": "Non-privileged alternative to the host-path bind. Open Horizon accepts ':rw' on a NAMED VOLUME without privileged:true, so this avoids the privilege requirement entirely. TRADE-OFF: the monitor's own service definition must mount the same named volume read-only (replacing its /var/log/workloads host bind), which you do not control -- coordinate the volume name and directory layout with the node operator before choosing this pattern. Note that MONITORING_LOG_PATHS is the path where the MONITOR sees the file (its mount of the shared named volume), not the /var/log/app path this workload writes to.",
+  "org": "examples",
+  "label": "Sample monitored service using a shared named volume",
+  "description": "A workload that shares logs with the monitor through a named volume instead of a host path.",
+  "public": false,
+  "url": "example.com.unprivileged",
+  "version": "1.0.0",
+  "arch": "amd64",
+  "sharable": "singleton",
+  "deployment": {
+    "services": {
+      "unprivileged": {
+        "image": "examples/unprivileged:1.0.0",
+        "binds": [
+          "edge-ai-workload-logs:/var/log/app:rw"
+        ],
+        "environment": [
+          "MONITORING_ENABLED=true",
+          "MONITORING_LOG_PATHS=/var/log/workloads/unprivileged/app.log",
+          "MONITORING_ERROR_PATTERNS=ERROR,FATAL"
+        ]
+      }
+    }
+  }
+}

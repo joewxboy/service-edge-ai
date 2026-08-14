@@ -1,0 +1,18 @@
+{
+  "_comment": "Node policy for a test edge node. NOTE: `hzn policy update` REPLACES the node's entire policy, it does not merge. If your node already has policy properties (including a 'deployment' section) that other deployment policies match on, copy them into this file first -- run `hzn policy list` and check every section, not just top-level properties. Omitting them cancels those agreements.",
+  "properties": [
+    {
+      "name": "monitoring",
+      "value": true
+    },
+    {
+      "name": "node-type",
+      "value": "test-edge-node"
+    }
+  ],
+  "constraints": [],
+  "deployment": {
+    "properties": [],
+    "constraints": []
+  }
+}

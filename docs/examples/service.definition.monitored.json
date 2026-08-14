@@ -1,0 +1,27 @@
+{
+  "_comment": "Example service definition for a workload that opts into monitoring. The MONITORING_* environment variables and the log bind are the only additions needed. NOTE 1: the variables must live inside 'deployment', not at the top level -- the exchange discards unknown top-level fields. NOTE 2: privileged:true is required for a writable bind to the root-owned /var/log/workloads; without it the agent refuses the deployment. See service.definition.named-volume.json for a non-privileged alternative.",
+  "org": "examples",
+  "label": "Sample monitored sensor service",
+  "description": "A workload that writes logs to a shared mount and opts into LLM-based monitoring.",
+  "public": false,
+  "url": "example.com.sensor",
+  "version": "1.2.0",
+  "arch": "amd64",
+  "sharable": "singleton",
+  "deployment": {
+    "services": {
+      "sensor": {
+        "image": "examples/sensor:1.2.0",
+        "binds": [
+          "/var/log/workloads/sensor:/var/log/app:rw"
+        ],
+        "environment": [
+          "MONITORING_ENABLED=true",
+          "MONITORING_LOG_PATHS=/var/log/workloads/sensor/app.log",
+          "MONITORING_ERROR_PATTERNS=ERROR,FATAL,SensorFault,connection refused"
+        ],
+        "privileged": true
+      }
+    }
+  }
+}

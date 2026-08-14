@@ -1,0 +1,70 @@
+# Local testing harness for the LLM workload monitor.
+#
+#   docker compose up --build
+#
+# The sample-workload container writes errors into a shared log volume that the
+# monitor watches, so the full detect -> analyse -> propose path can be
+# exercised without an Open Horizon node.
+
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openhorizon/edge-ai:latest
+    container_name: edge-ai-monitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # This compose stack is a self-contained demo with no Open Horizon agent,
+      # so discovery reports anax unreachable and the sample workload below is
+      # watched directly. To exercise a real agent instead, run the container
+      # with `--network host`: anax binds to 127.0.0.1 only, so no bridge
+      # address can reach it.
+      MONITOR_ANAX_URL: http://localhost:8510
+      MONITOR_LOG_LEVEL: INFO
+      MONITOR_PROPOSAL_DIR: /var/lib/monitor/proposals
+    volumes:
+      - monitor-state:/var/lib/monitor
+      - ollama-models:/var/lib/ollama
+      # Workload logs, mounted read-only: the monitor never writes to them.
+      - workload-logs:/var/log/workloads:ro
+    # Resource limits keep the monitor from starving the workloads it watches.
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
+
+  # Stand-in for a monitored Open Horizon workload.
+  sample-workload:
+    image: busybox:latest
+    container_name: sample-workload
+    restart: unless-stopped
+    volumes:
+      - workload-logs:/var/log/workloads
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /var/log/workloads/sample
+        while true; do
+          echo "$$(date -Iseconds) INFO heartbeat ok" >> /var/log/workloads/sample/app.log
+          sleep 20
+          echo "$$(date -Iseconds) ERROR could not connect to database at db:5432: connection refused" >> /var/log/workloads/sample/app.log
+          sleep 40
+        done
+
+volumes:
+  monitor-state:
+  ollama-models:
+  workload-logs:

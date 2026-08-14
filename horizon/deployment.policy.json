@@ -1,0 +1,51 @@
+{
+  "label": "$DEPLOYMENT_POLICY_NAME",
+  "description": "Deploys the LLM workload monitor to edge nodes that opt into monitoring and have enough memory for local inference.",
+  "service": {
+    "name": "$SERVICE_NAME",
+    "org": "$HZN_ORG_ID",
+    "arch": "$ARCH",
+    "serviceVersions": [
+      {
+        "version": "$SERVICE_VERSION"
+      }
+    ]
+  },
+  "properties": [
+    {
+      "name": "deployment",
+      "value": "edge-ai-monitor"
+    }
+  ],
+  "constraints": [
+    "monitoring == true",
+    "openhorizon.memory >= 4096"
+  ],
+  "userInput": [
+    {
+      "serviceOrgid": "$HZN_ORG_ID",
+      "serviceUrl": "$SERVICE_NAME",
+      "serviceArch": "$ARCH",
+      "serviceVersionRange": "[0.0.0,INFINITY)",
+      "inputs": [
+        {
+          "name": "MONITOR_ANAX_URL",
+          "value": "http://localhost:8510"
+        },
+        {
+          "name": "MONITOR_POLL_INTERVAL",
+          "value": "60"
+        },
+        {
+          "name": "MONITOR_LOG_LEVEL",
+          "value": "INFO"
+        },
+        {
+          "_comment": "The 30s default is too tight for CPU-only inference. Measured on an 8-core x86_64 node: llama3.2:3b-instruct-q4_K_M takes ~55s for one analysis with a full context window.",
+          "name": "MONITOR_LLM_TIMEOUT",
+          "value": "120"
+        }
+      ]
+    }
+  ]
+}

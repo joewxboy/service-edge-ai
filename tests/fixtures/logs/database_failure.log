@@ -1,0 +1,11 @@
+2026-08-13T11:59:40Z INFO  sensor: configuration loaded from /etc/sensor/config.yaml
+2026-08-13T11:59:41Z INFO  sensor: connecting to database at db.internal:5432
+2026-08-13T11:59:42Z INFO  sensor: connection pool size set to 8
+2026-08-13T11:59:51Z WARN  sensor: connection attempt 1 timed out after 10s
+2026-08-13T12:00:01Z WARN  sensor: connection attempt 2 timed out after 10s
+2026-08-13T12:00:11Z ERROR sensor: could not connect to database at db.internal:5432: connection refused
+2026-08-13T12:00:11Z INFO  sensor: entering degraded mode, buffering readings locally
+2026-08-13T12:00:12Z WARN  sensor: local buffer at 12% capacity
+2026-08-13T12:00:41Z ERROR sensor: could not connect to database at db.internal:5432: connection refused
+2026-08-13T12:01:11Z ERROR sensor: could not connect to database at db.internal:5432: connection refused
+2026-08-13T12:01:12Z WARN  sensor: local buffer at 47% capacity

@@ -1,0 +1,41 @@
+{
+  "config": [],
+  "instances": { "active": [] },
+  "definitions": {
+    "active": [
+      {
+        "specRef": "example.com.sensor",
+        "organization": "examples",
+        "version": "1.2.0",
+        "arch": "amd64",
+        "name": "sensor",
+        "deployment": "{\"services\":{\"sensor\":{\"image\":\"examples/sensor:1.2.0\",\"environment\":[\"MONITORING_ENABLED=true\",\"MONITORING_LOG_PATHS=/var/log/workloads/sensor/app.log\",\"MONITORING_ERROR_PATTERNS=ERROR,FATAL,SensorFault\"]}}}"
+      },
+      {
+        "specRef": "example.com.quiet",
+        "organization": "examples",
+        "version": "0.9.1",
+        "arch": "amd64",
+        "name": "quiet",
+        "deployment": "{\"services\":{\"quiet\":{\"image\":\"examples/quiet:0.9.1\",\"environment\":[\"MONITORING_ENABLED=false\",\"MONITORING_LOG_PATHS=/var/log/workloads/quiet/app.log\"]}}}"
+      },
+      {
+        "specRef": "example.com.legacy",
+        "organization": "examples",
+        "version": "3.0.0",
+        "arch": "amd64",
+        "name": "legacy",
+        "deployment": "{\"services\":{\"legacy\":{\"image\":\"examples/legacy:3.0.0\"}}}"
+      },
+      {
+        "specRef": "example.com.defaults",
+        "organization": "examples",
+        "version": "2.0.0",
+        "arch": "amd64",
+        "name": "defaults",
+        "deployment": "{\"services\":{\"defaults\":{\"image\":\"examples/defaults:2.0.0\",\"environment\":[\"MONITORING_ENABLED=true\",\"MONITORING_LOG_PATHS=/var/log/workloads/defaults/app.log\"]}}}"
+      }
+    ],
+    "archived": []
+  }
+}

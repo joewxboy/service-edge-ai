@@ -1,29 +1,33 @@
 ## ADDED Requirements
 
 ### Requirement: Permission-based monitoring
-The system SHALL only monitor workloads that have explicitly enabled monitoring in their service definition.
+The system SHALL only monitor workloads that have explicitly enabled monitoring via the `MONITORING_ENABLED` environment variable in their service definition's deployment string.
 
 #### Scenario: Monitoring enabled
-- **WHEN** workload service definition contains monitoring.enabled=true
+- **WHEN** workload deployment environment contains MONITORING_ENABLED=true
 - **THEN** system proceeds with log monitoring for that workload
 
 #### Scenario: Monitoring disabled
-- **WHEN** workload service definition contains monitoring.enabled=false or lacks monitoring section
+- **WHEN** workload deployment environment sets MONITORING_ENABLED to a false value or omits it entirely
 - **THEN** system skips log monitoring for that workload and logs the decision
 
+#### Scenario: Enabled without log paths
+- **WHEN** MONITORING_ENABLED=true but MONITORING_LOG_PATHS is absent or empty
+- **THEN** system logs a warning and does not monitor the workload
+
 ### Requirement: Log file access
-The system SHALL access log files specified in the workload's monitoring.logPaths configuration via shared volume mounts.
+The system SHALL access log files listed in the workload's `MONITORING_LOG_PATHS` variable via shared volume mounts.
 
 #### Scenario: Valid log path
-- **WHEN** monitoring.logPaths specifies a file path that exists and is readable
+- **WHEN** MONITORING_LOG_PATHS specifies a file path that exists and is readable
 - **THEN** system opens the file for tailing and monitoring
 
 #### Scenario: Invalid log path
-- **WHEN** monitoring.logPaths specifies a file path that does not exist or is not readable
+- **WHEN** MONITORING_LOG_PATHS specifies a file path that does not exist or is not readable
 - **THEN** system logs a warning and continues monitoring other valid paths
 
 #### Scenario: Multiple log paths
-- **WHEN** monitoring.logPaths contains multiple file paths
+- **WHEN** MONITORING_LOG_PATHS contains multiple file paths
 - **THEN** system monitors all valid paths concurrently
 
 ### Requirement: Log tailing
@@ -38,7 +42,7 @@ The system SHALL continuously tail monitored log files to detect new entries in 
 - **THEN** system detects the rotation and reopens the new log file without losing entries
 
 ### Requirement: Error pattern matching
-The system SHALL match new log entries against error patterns specified in the workload's monitoring.errorPatterns configuration.
+The system SHALL match new log entries against error patterns specified in the workload's `MONITORING_ERROR_PATTERNS` variable.
 
 #### Scenario: Pattern match
 - **WHEN** a log entry contains text matching any error pattern (case-insensitive)
@@ -49,7 +53,7 @@ The system SHALL match new log entries against error patterns specified in the w
 - **THEN** system continues monitoring without triggering analysis
 
 #### Scenario: Default patterns
-- **WHEN** monitoring.errorPatterns is not specified or empty
+- **WHEN** MONITORING_ERROR_PATTERNS is not specified or empty
 - **THEN** system uses default patterns: ["ERROR", "FATAL", "Exception", "CRITICAL"]
 
 ### Requirement: Context window collection

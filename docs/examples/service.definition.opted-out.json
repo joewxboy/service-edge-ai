@@ -1,0 +1,21 @@
+{
+  "_comment": "Example of a workload that explicitly declines monitoring. Setting MONITORING_ENABLED=false -- or omitting the variables entirely -- has the same effect: the workload is discovered but its logs are never read.",
+  "org": "examples",
+  "label": "Sample private service",
+  "description": "A workload handling sensitive data that opts out of log monitoring.",
+  "public": false,
+  "url": "example.com.private",
+  "version": "1.0.0",
+  "arch": "amd64",
+  "sharable": "singleton",
+  "deployment": {
+    "services": {
+      "private": {
+        "image": "examples/private:1.0.0",
+        "environment": [
+          "MONITORING_ENABLED=false"
+        ]
+      }
+    }
+  }
+}

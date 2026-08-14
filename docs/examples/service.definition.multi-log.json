@@ -1,0 +1,27 @@
+{
+  "_comment": "Example of a workload exposing several log files with custom error patterns. All listed paths are tailed concurrently; an unreadable path is skipped with a warning while the rest keep working. MONITORING_ERROR_PATTERNS uses the JSON array form because one pattern contains a comma. privileged:true is required for the writable bind to root-owned /var/log/workloads.",
+  "org": "examples",
+  "label": "Sample multi-log gateway service",
+  "description": "A workload with separate application and access logs, each monitored.",
+  "public": false,
+  "url": "example.com.gateway",
+  "version": "2.0.0",
+  "arch": "amd64",
+  "sharable": "singleton",
+  "deployment": {
+    "services": {
+      "gateway": {
+        "image": "examples/gateway:2.0.0",
+        "binds": [
+          "/var/log/workloads/gateway:/var/log/gateway:rw"
+        ],
+        "environment": [
+          "MONITORING_ENABLED=true",
+          "MONITORING_LOG_PATHS=/var/log/workloads/gateway/app.log,/var/log/workloads/gateway/error.log,/var/log/workloads/gateway/upstream.log",
+          "MONITORING_ERROR_PATTERNS=[\"ERROR\", \"FATAL\", \"HTTP 5[0-9]{2}\", \"upstream timed out after {1,2} retries\"]"
+        ],
+        "privileged": true
+      }
+    }
+  }
+}

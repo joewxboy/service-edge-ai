@@ -11,6 +11,11 @@ Thumbs.db
 # Logs
 logs/
 *.log
+# ...except the sample logs the test suite reads. The directory must be
+# re-included first: git does not descend into an excluded directory, so a
+# negation for files inside it would never be evaluated.
+!tests/fixtures/logs/
+!tests/fixtures/logs/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -30,3 +35,22 @@ docker-compose.override.yml
 # Open Horizon
 horizon/*.tar.gz
 horizon/*.json.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Monitor runtime state
+proposals/

@@ -1,0 +1,85 @@
+{
+  "org": "$HZN_ORG_ID",
+  "label": "$SERVICE_NAME for $ARCH",
+  "description": "LLM-based workload monitoring service. Discovers Open Horizon workloads via the anax API, monitors the logs of workloads that opt in, and generates remediation proposals for detected errors.",
+  "documentation": "https://github.com/open-horizon-services/service-edge-ai/blob/main/README.md",
+  "public": true,
+  "url": "$SERVICE_NAME",
+  "version": "$SERVICE_VERSION",
+  "arch": "$ARCH",
+  "sharable": "singleton",
+  "requiredServices": [],
+  "userInput": [
+    {
+      "name": "MONITOR_ANAX_URL",
+      "label": "Base URL of the local Open Horizon agent (anax) API",
+      "type": "string",
+      "defaultValue": "http://localhost:8510"
+    },
+    {
+      "name": "MONITOR_POLL_INTERVAL",
+      "label": "Seconds between workload discovery polls",
+      "type": "string",
+      "defaultValue": "60"
+    },
+    {
+      "name": "MONITOR_LLM_MODEL",
+      "label": "Ollama model used for error analysis",
+      "type": "string",
+      "defaultValue": "llama3.2:3b-instruct-q4_K_M"
+    },
+    {
+      "name": "MONITOR_LLM_TIMEOUT",
+      "label": "Seconds before an LLM analysis request is cancelled",
+      "type": "string",
+      "defaultValue": "30"
+    },
+    {
+      "name": "MONITOR_MAX_QUEUE_SIZE",
+      "label": "Maximum pending analysis requests before shedding low-severity work",
+      "type": "string",
+      "defaultValue": "50"
+    },
+    {
+      "name": "MONITOR_MAX_BUFFER_MB",
+      "label": "Maximum in-memory log buffer in megabytes",
+      "type": "string",
+      "defaultValue": "100"
+    },
+    {
+      "name": "MONITOR_PROPOSAL_DIR",
+      "label": "Directory where remediation proposals are written",
+      "type": "string",
+      "defaultValue": "/var/lib/monitor/proposals"
+    },
+    {
+      "name": "MONITOR_LOG_LEVEL",
+      "label": "Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+      "type": "string",
+      "defaultValue": "INFO"
+    }
+  ],
+  "deployment": {
+    "services": {
+      "$SERVICE_NAME": {
+        "image": "$DOCKER_IMAGE_BASE:$DOCKER_IMAGE_VERSION",
+        "privileged": false,
+        "network": "host",
+        "binds": [
+          "edge-ai-monitor-state:/var/lib/monitor:rw",
+          "edge-ai-monitor-models:/var/lib/ollama:rw",
+          "/var/log/workloads:/var/log/workloads:ro",
+          "/etc/edge-ai-monitor/context:/etc/edge-ai-monitor/context:ro"
+        ],
+        "ports": [
+          {
+            "HostPort": "8080:8080",
+            "HostIP": "127.0.0.1"
+          }
+        ],
+        "max_memory_mb": 4096,
+        "max_cpus": 2
+      }
+    }
+  }
+}

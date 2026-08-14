@@ -1,0 +1,5 @@
+2026-08-13T12:30:00Z INFO  gateway: listening on 0.0.0.0:8443
+2026-08-13T12:30:05Z INFO  gateway: health check passed
+2026-08-13T12:30:10Z DEBUG gateway: 12 active connections
+2026-08-13T12:30:15Z INFO  gateway: rotated access log
+2026-08-13T12:30:20Z INFO  gateway: health check passed

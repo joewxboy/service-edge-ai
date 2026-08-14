@@ -1,0 +1,21 @@
+{
+  "id": "edge-node-01",
+  "organization": "examples",
+  "pattern": "",
+  "name": "edge-node-01",
+  "nodeType": "device",
+  "token_last_valid_time": "2026-08-13 12:00:00 +0000 UTC",
+  "token_valid": true,
+  "ha_group": "",
+  "configstate": {
+    "state": "configured",
+    "last_update_time": "2026-08-13 12:00:00 +0000 UTC"
+  },
+  "configuration": {
+    "exchange_api": "https://hub.example.com/edge-exchange/v1/",
+    "exchange_version": "2.110.0",
+    "mms_api": "https://hub.example.com/edge-css",
+    "architecture": "amd64",
+    "horizon_version": "2.30.0-744"
+  }
+}

@@ -5,7 +5,11 @@ The system SHALL poll the Open Horizon anax API every 60 seconds to discover reg
 
 #### Scenario: Successful workload discovery
 - **WHEN** the polling interval elapses
-- **THEN** system queries anax API endpoints (/node, /service/config, /agreement) and updates internal workload registry
+- **THEN** system queries anax API endpoints (/node, /service, /service/config, /agreement) and updates internal workload registry
+
+#### Scenario: Workload present only in agreements
+- **WHEN** a workload has an active agreement but no /service/config entry
+- **THEN** system still discovers the workload and marks it running
 
 #### Scenario: Anax API unavailable
 - **WHEN** anax API is unreachable during polling
@@ -29,13 +33,42 @@ The system SHALL maintain an internal registry of discovered workloads with thei
 ### Requirement: Service metadata extraction
 The system SHALL extract service definition metadata from anax API responses including service name, version, organization, and monitoring configuration.
 
-#### Scenario: Service with monitoring config
-- **WHEN** service definition contains monitoring section
-- **THEN** system extracts monitoring.enabled, monitoring.logPaths, and monitoring.errorPatterns fields
+The monitoring configuration SHALL be read from `MONITORING_*` environment variables declared in the service's deployment string, available at `GET /service` under `definitions.active[].deployment.services.<name>.environment`. A custom top-level field cannot be used because the Open Horizon exchange discards unknown service definition fields before they reach the node.
 
-#### Scenario: Service without monitoring config
-- **WHEN** service definition lacks monitoring section
+#### Scenario: Service with monitoring variables
+- **WHEN** a service's deployment environment contains MONITORING_ENABLED, MONITORING_LOG_PATHS, and MONITORING_ERROR_PATTERNS
+- **THEN** system extracts the enabled flag, log path list, and error pattern list from those variables
+
+#### Scenario: Service without monitoring variables
+- **WHEN** a service's deployment environment contains no MONITORING_ENABLED variable
 - **THEN** system marks the service as not eligible for monitoring
+
+#### Scenario: Service declaring context paths
+- **WHEN** a service's deployment environment contains MONITORING_CONTEXT_PATHS
+- **THEN** system extracts the list and associates it with the workload for prompt injection
+
+#### Scenario: Multiple containers in one deployment
+- **WHEN** a service's deployment defines several containers
+- **THEN** system reads MONITORING_* variables from all of them, combining declared log paths
+
+### Requirement: Monitoring variable parsing
+The system SHALL parse `MONITORING_LOG_PATHS`, `MONITORING_ERROR_PATTERNS`, and `MONITORING_CONTEXT_PATHS` as comma-separated lists, accepting a JSON array when the value begins with `[`.
+
+#### Scenario: Comma-separated list
+- **WHEN** MONITORING_LOG_PATHS is "/var/log/a.log,/var/log/b.log"
+- **THEN** system monitors both paths
+
+#### Scenario: JSON array for values containing commas
+- **WHEN** MONITORING_ERROR_PATTERNS begins with "[" and contains a JSON array
+- **THEN** system parses it as JSON so patterns containing commas are preserved
+
+#### Scenario: Boolean interpretation
+- **WHEN** MONITORING_ENABLED is any of "true", "1", or "yes" (case-insensitive)
+- **THEN** system treats monitoring as enabled, and treats any other value as disabled
+
+#### Scenario: Malformed value
+- **WHEN** a MONITORING_* variable cannot be parsed
+- **THEN** system logs a warning and treats the workload as not eligible for monitoring
 
 ### Requirement: Agreement tracking
 The system SHALL track active agreements for each workload to determine if the workload is currently running.

@@ -1,0 +1,32 @@
+{
+  "_comment": "VERIFIED WORKING REFERENCE. This exact definition was published to a live Open Horizon hub and deployed to a real edge node, where the monitor detected its errors, analysed them with a local LLM, and wrote remediation proposals. Use it as a known-good starting point. It writes a heartbeat line every 20s and an ERROR line every 60s, so you can watch the whole pipeline work without wiring up a real failing service. Replace the org, url, image and command with your own.",
+  "org": "$HZN_ORG_ID",
+  "label": "Sample monitored workload",
+  "description": "Emits periodic errors to a shared log path; opts into monitoring.",
+  "public": false,
+  "url": "sample-monitored-workload",
+  "version": "1.0.0",
+  "arch": "amd64",
+  "sharable": "singleton",
+  "deployment": {
+    "services": {
+      "sample-monitored-workload": {
+        "image": "busybox:latest",
+        "binds": [
+          "/var/log/workloads/sample:/var/log/out:rw"
+        ],
+        "command": [
+          "sh",
+          "-c",
+          "while true; do echo \"$(date -Iseconds) INFO heartbeat ok\" >> /var/log/out/app.log; sleep 20; echo \"$(date -Iseconds) ERROR could not connect to database at db:5432: connection refused\" >> /var/log/out/app.log; sleep 40; done"
+        ],
+        "environment": [
+          "MONITORING_ENABLED=true",
+          "MONITORING_LOG_PATHS=/var/log/workloads/sample/app.log",
+          "MONITORING_ERROR_PATTERNS=ERROR,FATAL"
+        ],
+        "privileged": true
+      }
+    }
+  }
+}

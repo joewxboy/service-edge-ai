@@ -1,0 +1,24 @@
+{
+  "properties": [
+    {
+      "name": "service",
+      "value": "edge-ai-monitor"
+    },
+    {
+      "name": "capability",
+      "value": "llm-workload-monitoring"
+    },
+    {
+      "name": "requires-llm-runtime",
+      "value": true
+    },
+    {
+      "name": "minimum-memory-mb",
+      "value": 4096
+    }
+  ],
+  "constraints": [
+    "openhorizon.memory >= 4096",
+    "openhorizon.arch in \"amd64,arm64\""
+  ]
+}

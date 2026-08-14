@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edge-ai-monitor"
+version = "0.0.1"
+description = "LLM-based workload monitoring service for Open Horizon edge nodes"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE.md" }
+dependencies = [
+    # LLM inference against a local Ollama runtime
+    "ollama>=0.3.0",
+    # anax API calls
+    "requests>=2.31.0",
+    # log file monitoring
+    "watchdog>=4.0.0",
+    # config.yaml parsing
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+]
+
+[project.scripts]
+edge-ai-monitor = "edge_ai_monitor.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

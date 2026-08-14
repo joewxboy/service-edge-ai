@@ -1,0 +1,33 @@
+{
+  "config": [
+    {
+      "url": "example.com.sensor",
+      "org": "examples",
+      "version": "1.2.0",
+      "versionRange": "[1.0.0,INFINITY)",
+      "arch": "amd64",
+      "name": "sensor"
+    },
+    {
+      "url": "example.com.quiet",
+      "org": "examples",
+      "version": "0.9.1",
+      "arch": "amd64",
+      "name": "quiet"
+    },
+    {
+      "url": "example.com.legacy",
+      "org": "examples",
+      "version": "3.0.0",
+      "arch": "amd64",
+      "name": "legacy"
+    },
+    {
+      "url": "example.com.defaults",
+      "org": "examples",
+      "version": "2.0.0",
+      "arch": "amd64",
+      "name": "defaults"
+    }
+  ]
+}

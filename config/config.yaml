@@ -1,0 +1,58 @@
+# Default configuration for the Open Horizon LLM workload monitor.
+#
+# Every value below can be overridden at deploy time with an environment
+# variable (shown in the comment beside each setting), which is how Open
+# Horizon service definitions supply per-node settings.
+
+# Open Horizon agent API. Read-only queries only.
+anax:
+  base_url: http://localhost:8510   # MONITOR_ANAX_URL
+  timeout: 10.0                     # MONITOR_ANAX_TIMEOUT (seconds)
+  max_retries: 3
+
+# How often to re-discover workloads from the anax API.
+discovery:
+  poll_interval: 60.0               # MONITOR_POLL_INTERVAL (seconds)
+
+# Log tailing behaviour and memory ceiling.
+logs:
+  poll_interval: 1.0                # MONITOR_LOG_POLL_INTERVAL (seconds)
+  max_buffer_mb: 100                # MONITOR_MAX_BUFFER_MB
+
+# Local LLM runtime. The default model is a 4-bit quantized Llama 3.2 3B,
+# which needs roughly 2GB of RAM.
+llm:
+  model: llama3.2:3b-instruct-q4_K_M  # MONITOR_LLM_MODEL
+  host: http://localhost:11434        # MONITOR_LLM_HOST
+  timeout: 30.0                       # MONITOR_LLM_TIMEOUT (seconds)
+  max_retries: 2
+  auto_pull: true                     # MONITOR_LLM_AUTO_PULL (pull model if absent)
+
+# Analysis queue sizing and result reuse.
+analysis:
+  max_queue_size: 50                # MONITOR_MAX_QUEUE_SIZE
+  cache_ttl: 900.0                  # MONITOR_CACHE_TTL (seconds)
+
+# Domain knowledge injected into analysis prompts (SKILL.md files, runbooks,
+# wiki exports). Without it the model gives generically correct but
+# deployment-agnostic advice. See docs/context-and-steering.md.
+context:
+  directory: /etc/edge-ai-monitor/context   # MONITOR_CONTEXT_DIR
+  enabled: true                             # MONITOR_CONTEXT_ENABLED
+  max_total_bytes: 8000                     # MONITOR_CONTEXT_MAX_BYTES (budget per prompt)
+  max_file_bytes: 4000                      # MONITOR_CONTEXT_MAX_FILE_BYTES (per-file truncation)
+
+# Where remediation proposals are written.
+proposals:
+  directory: /var/lib/monitor/proposals   # MONITOR_PROPOSAL_DIR
+
+logging:
+  level: INFO                       # MONITOR_LOG_LEVEL
+  format: "%(asctime)s %(levelname)s [%(name)s] %(message)s"  # MONITOR_LOG_FORMAT
+  output: stdout
+
+# Health check endpoint used by the container HEALTHCHECK.
+health:
+  enabled: true                     # MONITOR_HEALTH_ENABLED
+  port: 8080                        # MONITOR_HEALTH_PORT
+  host: 0.0.0.0

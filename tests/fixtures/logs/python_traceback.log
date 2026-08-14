@@ -1,0 +1,8 @@
+2026-08-13T12:10:00Z INFO  worker: starting batch 4417
+2026-08-13T12:10:01Z INFO  worker: loaded 250 records
+2026-08-13T12:10:02Z Traceback (most recent call last):
+2026-08-13T12:10:02Z   File "/app/worker.py", line 88, in process_batch
+2026-08-13T12:10:02Z     value = record["temperature"] / record["samples"]
+2026-08-13T12:10:02Z ZeroDivisionError: division by zero
+2026-08-13T12:10:02Z ERROR worker: batch 4417 aborted after 1 of 250 records
+2026-08-13T12:10:03Z INFO  worker: batch 4417 requeued for retry

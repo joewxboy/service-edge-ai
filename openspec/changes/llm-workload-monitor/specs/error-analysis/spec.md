@@ -29,6 +29,44 @@ The system SHALL provide workload metadata to the LLM including service name, ve
 - **WHEN** LLM receives workload metadata along with error context
 - **THEN** analysis output references specific service configuration and deployment details
 
+### Requirement: Domain knowledge injection
+The system SHALL inject operator- and developer-supplied documentation into the analysis prompt so that analyses reflect the specific deployment rather than generic assumptions.
+
+#### Scenario: Node-wide context
+- **WHEN** readable `.md`, `.markdown`, or `.txt` files exist in the configured context directory
+- **THEN** system includes their content in every analysis prompt, in filename order
+
+#### Scenario: Per-workload context
+- **WHEN** a workload declares MONITORING_CONTEXT_PATHS
+- **THEN** system includes those files only in that workload's analysis prompts, ordered before node-wide context
+
+#### Scenario: No context configured
+- **WHEN** no context directory exists and no workload context paths are declared
+- **THEN** system omits the knowledge section from the prompt entirely
+
+#### Scenario: Unreadable context file
+- **WHEN** a declared context path does not exist or cannot be read
+- **THEN** system logs a warning and continues with the remaining context files
+
+#### Scenario: Context updated at runtime
+- **WHEN** a context file is edited after the service starts
+- **THEN** the next analysis uses the updated content without requiring a restart
+
+### Requirement: Context budget
+The system SHALL bound injected knowledge so that guidance does not crowd out the log evidence in the model's context window.
+
+#### Scenario: Oversized file
+- **WHEN** a context file exceeds the per-file byte budget
+- **THEN** system truncates it and marks the truncation in the prompt
+
+#### Scenario: Total budget reached
+- **WHEN** accumulated context reaches the total byte budget
+- **THEN** system omits remaining documents and logs which were dropped
+
+#### Scenario: Budget pressure with both sources
+- **WHEN** the budget cannot fit both workload and node-wide context
+- **THEN** system retains workload-specific context in preference to node-wide context
+
 ### Requirement: Severity classification
 The system SHALL classify errors into severity levels: low, medium, high, or critical based on LLM analysis.
 
